@@ -1,0 +1,274 @@
+#!/bin/bash
+#PBS -N 20150105_GCTA
+#PBS -q hotel
+#PBS -v QOS=10
+#PBS -l walltime=10:00:00
+#PBS -m abe
+#PBS -l nodes=1:ppn=1
+#PBS -o 20150105_GCTA.run.oe
+#PBS -j oe
+#PBS -M k26stan@yahoo.com
+#PBS -V
+#PBS -A schork-group
+
+echo "<startTime>"`date`"</startTime>"
+echo "<output>"
+
+
+######################################################################
+## SET UP PATHS/FILES/DIRECTORIES ####################################
+######################################################################
+
+## Home Directory
+HOME_DIR=/projects/janssen/Heritability
+DATE=20150105
+NAME=GCTA_mPheno
+
+## Covariate Files
+COVS_1=`echo DAS_BL` # Which Covariates to Include?
+COVS_2=`echo DAS_BL_MN` # Which Covariates to Include?
+COVS_3=`echo DAS_BL PC` # Which Covariates to Include?
+COVS_4=`echo DAS_BL_MN PC` # Which Covariates to Include?
+
+## Variant File Name
+VAR_FILE=BED_MAF1.ALL
+SNP_FILE=FULL_BED_SNP/BED_FULL.SNP
+IND_FILE=FULL_BED_IND/BED_FULL.IND
+
+## Make new folder for Today's adventures
+TEST_DIR=${HOME_DIR}/${DATE}_${NAME}
+mkdir ${TEST_DIR}
+cd ${TEST_DIR}
+
+## Directories for Tools and Whatnot
+VAR_DIR=/projects/janssen/VCFs/PLINK
+PHENO_DIR=/projects/janssen/ASSOCIATION/PH-PHENOTYPES
+GCTA=/projects/janssen/Tools/gcta/gcta64
+PULL_COVS=/projects/janssen/Heritability/Pull_Cov_Cols.R
+
+## Set Variant File Paths
+VAR_PATH=${VAR_DIR}/${VAR_FILE}
+SNP_PATH=${VAR_DIR}/${SNP_FILE}
+IND_PATH=${VAR_DIR}/${IND_FILE}
+
+######################################################################
+## MAKE GRM ##########################################################
+######################################################################
+
+#####################################################
+## Calculate Genetic Relationship Matrix for Individuals
+ # GCTA --make-grm
+ ${GCTA} --make-grm \
+ --bfile ${VAR_PATH} \
+ --thread-num 1 \
+ --maf .01 \
+ --autosome \
+ --out 1-GRM_FULL
+
+######################################################################
+## PCA CALCS #########################################################
+######################################################################
+
+#####################################################
+## Do PCA Analysis for Whole Genome
+ # GCTA --pca
+ ${GCTA} --pca 20 \
+ --grm 1-GRM_FULL \
+ --thread-num 1 \
+ --out 2-PCA_FULL
+
+######################################################################
+## VARIANCE ESTIMATES ################################################
+####### NO COVARIATES ################################################
+
+#####################################################
+## Specify Phenotype Info
+for pheno_file in `cat ../PHENO_FILE_NAMES.list`
+do
+  PHENO_FILE=${pheno_file} # LT8_DEL_MNe_MN.txt
+  PHENO_PATH=${PHENO_DIR}/${PHENO_FILE}
+
+#####################################################
+## Estimate variance explained by all Vars in Genome
+ # BASIC TEST - NO COVARIATES (yet)
+  # GCTA --reml
+  ${GCTA} --reml \
+  --grm 1-GRM_FULL \
+  --pheno ${PHENO_PATH} \
+  --out 3-REML_${PHENO_FILE%%.txt}_FULL
+
+done # Close "pheno_file" loop
+
+######################################################################
+## VARIANCE ESTIMATES ################################################
+####### PCS AS COVARIATES ############################################
+
+#####################################################
+## Specify Phenotype Info
+for pheno_file in `cat ../PHENO_FILE_NAMES.list`
+do
+  PHENO_FILE=${pheno_file} # LT8_DEL_MNe_MN.txt
+  PHENO_PATH=${PHENO_DIR}/${PHENO_FILE}
+
+  #####################################################
+  ## Estimate variance explained by all Vars in Genome
+  # PCS AS COVARIATES
+  # GCTA --reml
+  ${GCTA} --reml \
+  --grm 1-GRM_FULL \
+  --pheno ${PHENO_PATH} \
+  --qcovar 2-PCA_FULL.eigenvec \
+  --out 3-REML_PCs_${PHENO_FILE%%.txt}_FULL
+
+done # Close "pheno_file" loop
+
+######################################################################
+## VARIANCE ESTIMATES ################################################
+####### OTHER COVARIATES #1 ##########################################
+
+#####################################################
+## Set Covariate File/Path
+COV_FILE=20141229_Full_Table.txt
+COV_PATH=${PHENO_DIR}/${COV_FILE}
+
+#####################################################
+## Convert Covariates into Format
+COVS=`echo "$COVS_1" | sed 's/ /QQQ/g'`
+COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
+COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
+
+NEW_COV_PATH=${TEST_DIR}/${COVS_FILENAME}_FULL.txt
+Rscript ${PULL_COVS} ${COVS_COMMAND} ${TEST_DIR}/2-PCA_FULL.eigenvec ${COV_PATH} ${NEW_COV_PATH}
+
+#####################################################
+## Specify Phenotype Info
+for pheno_file in `cat ../PHENO_FILE_NAMES.list`
+do
+  PHENO_FILE=${pheno_file} # LT8_DEL_MNe_MN.txt
+  PHENO_PATH=${PHENO_DIR}/${PHENO_FILE}
+
+  #####################################################
+  ## Estimate variance explained by all Vars in Genome
+  # GCTA --reml
+  ${GCTA} --reml \
+  --grm 1-GRM_FULL \
+  --pheno ${PHENO_PATH} \
+  --qcovar ${NEW_COV_PATH} \
+  --out 3-REML_1_${PHENO_FILE%%.txt}_${COVS_FILENAME}_FULL
+
+done # Close "pheno_file" loop
+
+######################################################################
+## VARIANCE ESTIMATES ################################################
+####### OTHER COVARIATES #2 ##########################################
+
+#####################################################
+## Set Covariate File/Path
+COV_FILE=20141229_Full_Table.txt
+COV_PATH=${PHENO_DIR}/${COV_FILE}
+
+#####################################################
+## Convert Covariates into Format
+COVS=`echo "$COVS_2" | sed 's/ /QQQ/g'`
+COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
+COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
+
+NEW_COV_PATH=${TEST_DIR}/${COVS_FILENAME}_FULL.txt
+Rscript ${PULL_COVS} ${COVS_COMMAND} ${TEST_DIR}/2-PCA_FULL.eigenvec ${COV_PATH} ${NEW_COV_PATH}
+
+#####################################################
+## Specify Phenotype Info
+for pheno_file in `cat ../PHENO_FILE_NAMES.list`
+do
+  PHENO_FILE=${pheno_file} # LT8_DEL_MNe_MN.txt
+  PHENO_PATH=${PHENO_DIR}/${PHENO_FILE}
+
+  #####################################################
+  ## Estimate variance explained by all Vars in Genome
+  # GCTA --reml
+  ${GCTA} --reml \
+  --grm 1-GRM_FULL \
+  --pheno ${PHENO_PATH} \
+  --qcovar ${NEW_COV_PATH} \
+  --out 3-REML_2_${PHENO_FILE%%.txt}_${COVS_FILENAME}_FULL
+
+done # Close "pheno_file" loop
+
+######################################################################
+## VARIANCE ESTIMATES ################################################
+####### OTHER COVARIATES #3 ##########################################
+
+#####################################################
+## Set Covariate File/Path
+COV_FILE=20141229_Full_Table.txt
+COV_PATH=${PHENO_DIR}/${COV_FILE}
+
+#####################################################
+## Convert Covariates into Format
+COVS=`echo "$COVS_3" | sed 's/ /QQQ/g'`
+COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
+COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
+
+NEW_COV_PATH=${TEST_DIR}/${COVS_FILENAME}_FULL.txt
+Rscript ${PULL_COVS} ${COVS_COMMAND} ${TEST_DIR}/2-PCA_FULL.eigenvec ${COV_PATH} ${NEW_COV_PATH}
+
+#####################################################
+## Specify Phenotype Info
+for pheno_file in `cat ../PHENO_FILE_NAMES.list`
+do
+  PHENO_FILE=${pheno_file} # LT8_DEL_MNe_MN.txt
+  PHENO_PATH=${PHENO_DIR}/${PHENO_FILE}
+
+  #####################################################
+  ## Estimate variance explained by all Vars in Genome
+  # GCTA --reml
+  ${GCTA} --reml \
+  --grm 1-GRM_FULL \
+  --pheno ${PHENO_PATH} \
+  --qcovar ${NEW_COV_PATH} \
+  --out 3-REML_3_${PHENO_FILE%%.txt}_${COVS_FILENAME}_FULL
+
+done # Close "pheno_file" loop
+
+######################################################################
+## VARIANCE ESTIMATES ################################################
+####### OTHER COVARIATES #4 ##########################################
+
+#####################################################
+## Set Covariate File/Path
+COV_FILE=20141229_Full_Table.txt
+COV_PATH=${PHENO_DIR}/${COV_FILE}
+
+#####################################################
+## Convert Covariates into Format
+COVS=`echo "$COVS_4" | sed 's/ /QQQ/g'`
+COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
+COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
+
+NEW_COV_PATH=${TEST_DIR}/${COVS_FILENAME}_FULL.txt
+Rscript ${PULL_COVS} ${COVS_COMMAND} ${TEST_DIR}/2-PCA_FULL.eigenvec ${COV_PATH} ${NEW_COV_PATH}
+
+#####################################################
+## Specify Phenotype Info
+for pheno_file in `cat ../PHENO_FILE_NAMES.list`
+do
+  PHENO_FILE=${pheno_file} # LT8_DEL_MNe_MN.txt
+  PHENO_PATH=${PHENO_DIR}/${PHENO_FILE}
+
+  #####################################################
+  ## Estimate variance explained by all Vars in Genome
+  # GCTA --reml
+  ${GCTA} --reml \
+  --grm 1-GRM_FULL \
+  --pheno ${PHENO_PATH} \
+  --qcovar ${NEW_COV_PATH} \
+  --out 3-REML_4_${PHENO_FILE%%.txt}_${COVS_FILENAME}_FULL
+
+done # Close "pheno_file" loop
+
+echo "</output>"
+echo "<exitStatus>"$?"</exitStatus>"
+echo "<stopTime>"`date`"</stopTime>"
+qstat -f $PBS_JOBID | grep Job
+qstat -f $PBS_JOBID | grep resources
+
