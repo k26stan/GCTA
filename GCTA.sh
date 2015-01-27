@@ -20,12 +20,14 @@ HOME_DIR=$2
 
 ## Parameters and Files
 VAR_FILE=$3
-PHENO_DIR=$4
-PHENO_FILE_LIST=$5 # Which Phenotype Files are you using?
-COV_FILE=$6 # Path to Covariate File or "F"
-COVS=$7 # Which Covariates to Include?
-PC_COUNT=$8 # How many PCs to Include as Covariates?
-START_STEP=$9 # Which Step do you want to start on?
+VAR_DIR=$4
+PHENO_DIR=$5
+PHENO_FILE=$6
+PHENO_NAME_LIST=$7 # Which Phenotype Files are you using?
+COV_FILE=$8 # Path to Covariate File or "F"
+COVS=$9 # Which Covariates to Include?
+PC_COUNT=${10} # How many PCs to Include as Covariates?
+START_STEP=${11} # Which Step do you want to start on?
 
 ###########################################################
 ## Constant Paths ##
@@ -35,15 +37,17 @@ GCTA=/projects/janssen/Tools/gcta/gcta64 # /gpfs/group/schork/nwineing/gcta/gcta
 
 ## Custom Scripts
 PULL_COVS=/projects/janssen/Psych/Scripts/GCTA/Pull_Cov_Cols.R
-
-## Specify Directories
-VAR_DIR=/projects/janssen/Psych/Data/Genotyped/
+PULL_PHENO=/projects/janssen/Psych/Scripts/GCTA/Pull_Pheno_Col.R
+PLOT_GRM=/projects/janssen/Psych/Scripts/GCTA/Plot_GRM.R
+PLOT_EST=/projects/janssen/Psych/Scripts/GCTA/Plot_Estimates.R
 
 ## Set Specific Paths
+VAR_PATH=${VAR_DIR}/${VAR_FILE}
 COV_PATH=${PHENO_DIR}/${COV_FILE}
+PHENO_PATH=${PHENO_DIR}/${PHENO_FILE}
 
 ## Make new folder for Today's adventures
-OUT_DIR=${HOME_DIR}/${DATE}_${PHENO_FILE_LIST%%.txt}
+OUT_DIR=${HOME_DIR}/${DATE}_${PHENO_NAME_LIST%%.txt}
 mkdir ${OUT_DIR}
 cd ${OUT_DIR}
 
@@ -103,7 +107,7 @@ echo `date` "2 - Calculate GRM" >> ${UPDATE_FILE}
 ##########################################################
 ## Calculate GRM Using all variants
 ${GCTA} \
---bfile ${VAR_FILE} \
+--bfile ${VAR_PATH} \
 --thread-num 1 \
 --autosome \
 --make-grm \
@@ -175,9 +179,14 @@ echo \### Estimate Heritability \###
 echo `date` "5 - Estimate Heritability" >> ${UPDATE_FILE}
 
 ## Loop through Phenotypes
-for file in `cat ${PHENO_DIR}/${PHENO_FILE_LIST}`
+for pheno in `cat ${PHENO_DIR}/${PHENO_NAME_LIST}`
 do
-EST_OUT=${OUT_DIR}/3-REML_file
+
+## Pull out Phenotype to File
+NEW_PHENO_PATH=${OUT_DIR}/${pheno}_FULL.txt
+Rscript ${PULL_PHENO} ${PHENO_PATH} ${pheno} ${NEW_PHENO_PATH}
+
+EST_OUT=${OUT_DIR}/3-REML_${pheno}
 
 ## Run GCTA to get Heritability Estimates
  # If Covariates are Specified
@@ -185,7 +194,7 @@ if [[ $USE_COVARS == TRUE ]]
 then
 ${GCTA} \
 --grm 1-GRM_FULL.RM5 \
---pheno ${PHENO_DIR}/${file} \
+--pheno ${NEW_PHENO_PATH} \
 --qcovar ${NEW_COV_PATH} \
 --reml \
 --reml-maxit 1000 \
@@ -196,7 +205,7 @@ else
  # If Covariates are NOT Specified
 ${GCTA} \
 --grm 1-GRM_FULL.RM5 \
---pheno ${PHENO_DIR}/${file} \
+--pheno ${NEW_PHENO_PATH} \
 --reml \
 --reml-maxit 1000 \
 --reml-est-fix \
@@ -210,6 +219,25 @@ done # Close Phenotype Loop
 echo `date` "5 - Estimate Heritability - DONE" > ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
+##########################################################################
+## 6 ## Plot GRM & Estimates #############################################
+##########################################################################
+if [ "$START_STEP" -le 6 ]; then
+echo \### 6 - `date` \###
+echo \### Make Plots \###
+echo `date` "6 - Make Plots" >> ${UPDATE_FILE}
+
+## Plot Genetic Relationship Matrices
+Rscript ${PLOT_GRM} 1-GRM_FULL
+
+## Plot Heritability Estimates
+Rscript ${PLOT_EST} ${PHENO_DIR}/${PHENO_NAME_LIST} ${OUT_DIR} ${VAR_FILE}
+
+## Done
+echo `date` "6 - Make Plots - DONE" > ${UPDATE_FILE}
+printf "V\nV\nV\nV\nV\nV\nV\nV\n"
+fi
+
 ##########################################################################
 ## END OF DOC ############################################################
 ##########################################################################
