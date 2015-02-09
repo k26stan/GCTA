@@ -78,7 +78,7 @@ for ( d in 1:length(DAT.LIST) ) {
 	## Plot it
 	PLOT_PRC <- .25
 	X <- sample( 1:nrow(DAT_ARR), PLOT_PRC*nrow(DAT_ARR), replace=F )
-	png( paste(PathToFile,"_HEAT_",file_name,".png",sep=""), height=2500, width=2500, pointsize=40 )
+	jpeg( paste(PathToFile,"_HEAT_",file_name,".jpeg",sep=""), height=2500, width=2500, pointsize=40 )
 	heatmap.2(DAT_ARR[X,X], main=paste("Genetic Relationship Matrix -",100*PLOT_PRC,"% Cohort"), scale="none", symm=T, dendrogram="both", Rowv=T, Colv=T, col=COLS, breaks=BRKS, sepwidth=c(0,0), trace="none" )
 	dev.off()
 
