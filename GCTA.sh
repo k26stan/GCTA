@@ -212,7 +212,7 @@ echo `date` "5 - Estimate Heritability" >> ${UPDATE_FILE}
 IFSo=$IFS
 IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
 ## Loop through Phenotypes
-# for line in `head -5 ${PHENO_NAME_LIST_PATH}`
+# for line in `head -20 ${PHENO_NAME_LIST_PATH}`
 for line in `cat ${PHENO_NAME_LIST_PATH}`
 do
  # Determine which Phenotype to Use
@@ -242,13 +242,13 @@ then
 COVS_COMMAND=`echo $COVS_COMMAND | sed 's/COUN/CN_ARG,CN_AUS,CN_COL,CN_HUN,CN_LTU,CN_MEX,CN_MYS,CN_NZL,CN_POL,CN_RUS,CN_UKR/g'`
 fi # Close (if COUN)
 
-fi # Close (if USE_COVARS)
-
 #####################################################
 ## Compile Covariates into Correct Format
 NEW_COV_PATH=${OUT_DIR}/${COVS_FILENAME}_FULL.txt
 echo ${NEW_COV_PATH}
 Rscript ${PULL_COVS} ${COVS_COMMAND} ${OUT_DIR}/2-PCA_FULL.eigenvec ${COV_PATH} ${NEW_COV_PATH}
+
+fi # Close (if USE_COVARS)
 
 ## Pull out Phenotype to File
 NEW_PHENO_PATH=${OUT_DIR}/${pheno}_FULL.txt
@@ -258,7 +258,7 @@ EST_OUT=${OUT_DIR}/3-REML_${pheno}
 
 ## Run GCTA to get Heritability Estimates
  # If Covariates are Specified
-if [[ $USE_COVARS == TRUE ]]
+if [[ $USE_COVARS == TRUE && $COVS != "" ]]
 then
 ${GCTA} \
 --grm 1-GRM_FULL.RM5 \

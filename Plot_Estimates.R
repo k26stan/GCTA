@@ -10,6 +10,7 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- c( "/projects/janssen/Pheno/PHENO_NAMES.txt", "/projects/janssen/Psych/GCTA/20150126b_PHENO_NAMES", "Cohort_Name" )
 # LINE <- c( "/Users/kstandis/Downloads/20150126b_PHENO_NAMES/PHENO_NAMES.txt", "/Users/kstandis/Downloads/20150126b_PHENO_NAMES", "Cohort_Name" )
 # LINE <- c( "/projects/janssen/Heritability/Manuscript_Phenos_Covs.txt", "/projects/janssen/Heritability/20150310_ALL2b_Manuscript_Phenos_Covs", "TEMP" )
+# LINE <- c( "/projects/janssen/Heritability/Manuscript_Phenos_Covs.txt", "/projects/janssen/Heritability/20150310_ALL2b_Manuscript_Phenos_Covs", "TEMP" )
 Pheno_List <- LINE[1]
 PathToData <- LINE[2]
 Cohort_Name <- LINE[3]
@@ -21,7 +22,7 @@ print( "Running: Plot_Estimates.R" )
 
 ## Load Phenotype List
 print( "Loading Phenotype List")
-PHENOS <- as.character( read.table( Pheno_List, header=F )[,1] )
+PHENOS <- as.character( read.table( Pheno_List, header=F, fill=T )[,1] )
 
 ## Load Heritability Estimates for Phenotypes
 print( "Loading/Compiling GCTA Results" )
