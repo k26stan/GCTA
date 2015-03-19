@@ -62,7 +62,7 @@ PCHS <- rep( 1, nrow(VAR) )
 PCHS[ grep("DEL",rownames(VAR)) ] <- 20
 
 ## Set Plot Parameters
-XLIM <- c(min( VAR[,"VgVp"]-SE[,"VgVp"], na.rm=T), max(1,max(VAR[,"VgVp"]+SE[,"VgVp"],na.rm=T)) )
+XLIM <- c(min( 0,VAR[,"VgVp"]-SE[,"VgVp"], na.rm=T), max(1,max(VAR[,"VgVp"]+SE[,"VgVp"],na.rm=T)) )
 YLIM <- c( 0,nrow(VAR)+1 )
 WHICH_SIG <- which( MOD[,"Pval"] < .05 )
 ## Open Plot
