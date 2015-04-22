@@ -40,6 +40,7 @@ PULL_COVS=/projects/janssen/Psych/Scripts/GCTA/Pull_Cov_Cols.R
 PULL_PHENO=/projects/janssen/Psych/Scripts/GCTA/Pull_Pheno_Col.R
 PLOT_GRM=/projects/janssen/Psych/Scripts/GCTA/Plot_GRM.R
 PLOT_EST=/projects/janssen/Psych/Scripts/GCTA/Plot_Estimates.R
+PERMUTE=/projects/janssen/Psych/Scripts/GCTA/Permute.R
 
 ## Set Specific Paths
 VAR_PATH=${VAR_DIR}/${VAR_FILE}
@@ -302,6 +303,104 @@ Rscript ${PLOT_GRM} 1-GRM_FULL
 
 ## Plot Heritability Estimates
 Rscript ${PLOT_EST} ${PHENO_NAME_LIST_PATH} ${OUT_DIR} ${VAR_FILE}
+
+## Done
+echo `date` "6 - Make Plots - DONE" >> ${UPDATE_FILE}
+printf "V\nV\nV\nV\nV\nV\nV\nV\n"
+fi
+##########################################################################
+## 7 ## Permute for P-Values #############################################
+##########################################################################
+if [ "$START_STEP" -le 6 ]; then
+echo \### 7 - `date` \###
+echo \### Permute \###
+echo `date` "7 - Permute" >> ${UPDATE_FILE}
+
+## Specify Number of Permutations
+N_PERM=10
+
+
+IFSo=$IFS
+IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
+## Loop through Phenotypes
+# for line in `head -20 ${PHENO_NAME_LIST_PATH}`
+# for line in `cat ${PHENO_NAME_LIST_PATH}`; do
+for line in `cat ${PHENO_NAME_LIST_PATH} | grep DEL | grep MNa`; do
+# Determine which Phenotype to Use
+pheno=`echo ${line} | awk '{print $1}'`
+
+## Pull out Phenotype to File
+NEW_PHENO_PATH=${OUT_DIR}/${pheno}_FULL.txt
+
+## If Covariates are being Used
+if [[ $USE_COVARS == TRUE ]]; then
+# Determine Which Covariates for this Phenotype
+# (from PHENO_NAME_LIST_FILE)
+COVS=`echo ${line} | cut -d$'\t' -f2- | sed 's/\t/QQQ/g'`
+# If PC's specified
+if [ $PC_COUNT -eq 0 ]; then
+COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
+COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
+else
+PCS=`seq 1 ${PC_COUNT}`
+PCS_COMMAND=`echo "PC"${PCS} | sed 's/ /QQQPC/g'`
+COVS_COMMAND=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/,/g'`
+COVS_FILENAME=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/_/g'`
+fi # Close (if PCs)
+
+## Incorporate Country/Site of Study as Binary Covariate (if Included)
+if [[ $COVS == *COUN* ]]; then
+COVS_COMMAND=`echo $COVS_COMMAND | sed 's/COUN/CN_ARG,CN_AUS,CN_COL,CN_HUN,CN_LTU,CN_MEX,CN_MYS,CN_NZL,CN_POL,CN_RUS,CN_UKR/g'`
+fi # Close (if COUN)
+
+## Compile Covariates into Correct Format
+NEW_COV_PATH=${OUT_DIR}/${COVS_FILENAME}_FULL.txt
+echo ${NEW_COV_PATH}
+
+fi # Close (if USE_COVARS)
+
+#######################################
+## Permute Phenotype/Covariate Files ##
+Rscript ${PERMUTE} ${NEW_PHENO_PATH} ${NEW_COV_PATH} ${N_PERM}
+
+## Loop Through Z Permutations
+for perm in `seq ${N_PERM}`; do
+
+## Set up Path for GCTA Output
+EST_OUT=${OUT_DIR}/4-PERM_${pheno}_${perm}
+
+## Run GCTA to get Heritability Estimates
+# If Covariates are Specified
+if [[ $USE_COVARS == TRUE && $COVS != "" ]]; then
+${GCTA} \
+--grm 1-GRM_FULL.RM5 \
+--pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
+--qcovar ${NEW_COV_PATH%%txt}${perm}.txt \
+--reml \
+--reml-maxit 1000 \
+--reml-est-fix \
+--reml-pred-rand \
+--out ${EST_OUT}
+else # If Covariates are NOT Specified
+${GCTA} \
+--grm 1-GRM_FULL.RM5 \
+--pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
+--reml \
+--reml-maxit 1000 \
+--reml-est-fix \
+--reml-pred-rand \
+--out ${EST_OUT}
+fi
+
+rm ${NEW_PHENO_PATH%%txt}${perm}.txt
+rm ${NEW_COV_PATH%%txt}${perm}.txt
+
+done # Close Permutation Loop
+
+done # Close Phenotype Loop
+
+IFS=$IFSo # Reset
+
 
 ## Done
 echo `date` "6 - Make Plots - DONE" >> ${UPDATE_FILE}
