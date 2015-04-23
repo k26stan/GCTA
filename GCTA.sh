@@ -311,21 +311,20 @@ fi
 ##########################################################################
 ## 7 ## Permute for P-Values #############################################
 ##########################################################################
-if [ "$START_STEP" -le 6 ]; then
+if [ "$START_STEP" -le 7 ]; then
 echo \### 7 - `date` \###
 echo \### Permute \###
 echo `date` "7 - Permute" >> ${UPDATE_FILE}
 
 ## Specify Number of Permutations
-N_PERM=10
-
+N_PERM=1000
 
 IFSo=$IFS
 IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
 ## Loop through Phenotypes
 # for line in `head -20 ${PHENO_NAME_LIST_PATH}`
-# for line in `cat ${PHENO_NAME_LIST_PATH}`; do
-for line in `cat ${PHENO_NAME_LIST_PATH} | grep DEL | grep MNa`; do
+for line in `cat ${PHENO_NAME_LIST_PATH}`; do
+# for line in `cat ${PHENO_NAME_LIST_PATH} | grep DEL | grep MNa`; do
 # Determine which Phenotype to Use
 pheno=`echo ${line} | awk '{print $1}'`
 
@@ -363,11 +362,12 @@ fi # Close (if USE_COVARS)
 ## Permute Phenotype/Covariate Files ##
 Rscript ${PERMUTE} ${NEW_PHENO_PATH} ${NEW_COV_PATH} ${N_PERM}
 
+mkdir ${OUT_DIR}/4-PERM/
 ## Loop Through Z Permutations
 for perm in `seq ${N_PERM}`; do
 
 ## Set up Path for GCTA Output
-EST_OUT=${OUT_DIR}/4-PERM_${pheno}_${perm}
+EST_OUT=${OUT_DIR}/4-PERM/${pheno}_${perm}
 
 ## Run GCTA to get Heritability Estimates
 # If Covariates are Specified
@@ -403,10 +403,24 @@ IFS=$IFSo # Reset
 
 
 ## Done
-echo `date` "6 - Make Plots - DONE" >> ${UPDATE_FILE}
+echo `date` "7 - Permute - DONE" >> ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
+##########################################################################
+## 8 ## Plot Permuted Results ############################################
+##########################################################################
+if [ "$START_STEP" -le 8 ]; then
+echo \### 8 - `date` \###
+echo \### Plot Permuted Results \###
+echo `date` "8 - Plot Permuted Results" >> ${UPDATE_FILE}
 
+## Plot Permuted Results
+Rscript ${PLOT_PERMUTED} ${PHENO_NAME_LIST_PATH} ${OUT_DIR} ${N_PERM}
+
+## Done
+echo `date` "8 - Plot Permuted Results - DONE" >> ${UPDATE_FILE}
+printf "V\nV\nV\nV\nV\nV\nV\nV\n"
+fi
 ##########################################################################
 ## END OF DOC ############################################################
 ##########################################################################

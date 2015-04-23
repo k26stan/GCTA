@@ -7,7 +7,7 @@
 ###################################################
 
 LINE <- commandArgs(trailingOnly = TRUE)
-# LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.txt", "/projects/janssen/Heritability/20150316_Derived_MAF1_ALL_Manu_PhenoCovs_Derived", "TEMP", "10" )
+# LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.txt", "/projects/janssen/Heritability/20150316_Derived_MAF1_ALL_Manu_PhenoCovs_Derived", "TEMP", "1000" )
 Pheno_List <- LINE[1]
 PathToData <- LINE[2]
 Cohort_Name <- LINE[3]
@@ -21,6 +21,8 @@ print( "Running: Plot_Estimates.R" )
 ## Load Phenotype List
 print( "Loading Phenotype List")
 PHENOS <- as.character( read.table( Pheno_List, header=F, fill=T )[,1] )
+PHENOS <- PHENOS[ grep("DEL",PHENOS) ]
+PHENOS <- PHENOS[ grep("MNa",PHENOS) ]
 
 ## Load Heritability Estimates for Phenotypes
 print( "Loading/Compiling GCTA Results" )
@@ -35,7 +37,7 @@ for ( p in 1:length(PHENOS) ) {
 	rownames(VAR[[pheno]]) <- rownames(SE[[pheno]]) <- rownames(MOD[[pheno]]) <- c(paste("Perm",1:Num_Perms,sep="_"),"True")
 	# Input Permuted Results
 	for ( i in 1:Num_Perms ) {
-		file_name <- paste(PathToData,"/4-PERM_",pheno,"_",i,".hsq",sep="")
+		file_name <- paste(PathToData,"/4-PERM/",pheno,"_",i,".hsq",sep="")
 		TEMP_TAB <- read.table( file_name, sep="\t",header=T,fill=T, colClasses=rep("character",3) )
 		EST[[p]] <- TEMP_TAB
 		## Pull out Variance Estimates for various parameters
@@ -52,5 +54,90 @@ for ( p in 1:length(PHENOS) ) {
 	SE[[pheno]][i+1,] <- as.numeric( TEMP_TAB[1:4,"SE"] )
 	MOD[[pheno]][i+1,] <- as.numeric( TEMP_TAB[5:10,"Variance"] )
 
-	
 }
+
+## Compile and Save Data
+COMPILE <- list( EST, VAR, SE, MOD )
+names(COMPILE) <- c("EST","VAR","SE","MOD")
+save( COMPILE, file=paste(PathToData,"/4-PERM_Compile.Rdata",sep="") )
+
+###################################################
+## MAKE PLOTS #####################################
+###################################################
+
+## Basic Plot for (all) Phenotypes
+COLS.list <- c("firebrick1","gold1","chartreuse1","dodgerblue1") # c("firebrick2","gold2","chartreuse2","deepskyblue2","slateblue2")
+COLS <- rep("firebrick1",length(COMPILE$MOD)) # COLS.list # rep( COLS.list[1], nrow(COMPILE$VAR) )
+COLS[ grep("SJC",names(COMPILE$VAR)) ] <- "gold4"
+COLS[ grep("TJC",names(COMPILE$VAR)) ] <- "dodgerblue4"
+COLS[ grep("CRP",names(COMPILE$VAR)) ] <- "chartreuse4"
+COLS[ grep("rSJC",names(COMPILE$VAR)) ] <- "gold1"
+COLS[ grep("rTJC",names(COMPILE$VAR)) ] <- "dodgerblue1"
+COLS[ grep("lCRP",names(COMPILE$VAR)) ] <- "chartreuse1"
+LTYS <- rep( 2, length(COMPILE$VAR) )
+LTYS[ grep("DEL",rownames(COMPILE$VAR)) ] <- 1
+PCHS <- rep( 1, length(COMPILE$VAR) )
+PCHS[ grep("DEL",rownames(COMPILE$VAR)) ] <- 20
+
+# load( "/Users/kstandis/Data/Burn/Results/20150423_GCTA_Perm_Test.Rdata" )
+# Num_Perms <- nrow( COMPILE$MOD[[1]] ) - 1
+
+## Plot LRT Stat Distribution vs Actual Results
+P.perm.comp <- numeric( length(COMPILE$MOD) )
+names(P.perm.comp) <- names(COMPILE$MOD)
+par(mfrow=c(2,3))
+BRKS <- seq( 0,20,.5 )
+for ( p in 1:length(COMPILE$MOD) ) {
+	pheno <- names(COMPILE$MOD)[p]
+	# Plot LRT Distribution
+	XLIM <- range( COMPILE$MOD[[p]][,"LRT"] )
+	hist( COMPILE$MOD[[p]][-(Num_Perms+1),"LRT"], xlim=XLIM,main=paste("LRT Stat:",pheno),xlab="LRT Stat",breaks=BRKS,col=COLS[p] )
+	arrows( COMPILE$MOD[[p]]["True","LRT"],.2*Num_Perms,COMPILE$MOD[[p]]["True","LRT"],0, col="red" )
+	# Print P-Values
+	P.perm <- (1+length(which(COMPILE$MOD[[p]][1:Num_Perms,"LRT"]>COMPILE$MOD[[p]]["True","LRT"]))) / (1+Num_Perms)
+	P.perm.comp[p] <- P.perm
+	P.dat <- COMPILE$MOD[[p]]["True","Pval"]
+	text( quantile(XLIM,.2),.8*Num_Perms, pos=4,label=paste("P.perm =",formatC(P.perm,digits=2,format="e")) )
+	text( quantile(XLIM,.2),.75*Num_Perms, pos=4,label=paste("P.dat =",formatC(P.dat,digits=2,format="e")) )
+}
+
+## Plot Permuted vs Actual P-Values
+P.dat.comp <- unlist(lapply( COMPILE$MOD, function(x) x["True","Pval"] ))
+LIM <- c(0, max(-log10( c(P.dat.comp,P.perm.comp) )) )
+# COLS <- c("firebrick1","gold1","chartreuse1","dodgerblue1","chartreuse1","dodgerblue1") 
+plot( -log10(P.dat.comp), -log10(P.perm.comp), xlim=LIM,ylim=LIM, col=COLS,pch="+" )
+abline( h=seq(0,LIM[2],1),lty=2,col="grey50") ; abline( v=seq(0,LIM[2],1),lty=2,col="grey50")
+abline( 0,1 )
+
+XLIM <- c( 0,length(COMPILE$MOD)+1 )
+YLIM <- c( -.5,1.5 )
+# COLS <- c("firebrick1","gold1","chartreuse1","dodgerblue1","chartreuse1","dodgerblue1") 
+plot( 0,0,type="n", ylim=YLIM,xlim=XLIM, main="Heritability Estimates for True/Permuted Data", ylab="Heritability Estimate (%)", xlab="Phenotype",xaxt="n" )
+axis( 1, at=1:length(COMPILE$MOD), label=names(COMPILE$MOD),las=2 )
+abline( h=seq(-2,2,.2),lty=2,col="grey50" )
+abline( h=c(0,1),lty=1,col="black" )
+for ( p in 1:length(COMPILE$MOD) ) {
+	arrows( p, COMPILE$VAR[[p]][,"VgVp"]+COMPILE$SE[[p]][,"VgVp"], p, COMPILE$VAR[[p]][,"VgVp"]-COMPILE$SE[[p]][,"VgVp"], code=3,angle=90, col=COLS[p],lwd=1 )
+	arrows( p, COMPILE$VAR[[p]][Num_Perms+1,"VgVp"]+COMPILE$SE[[p]][Num_Perms+1,"VgVp"], p, COMPILE$VAR[[p]][Num_Perms+1,"VgVp"]-COMPILE$SE[[p]][Num_Perms+1,"VgVp"], code=3,angle=90, col=gsub("1","4",COLS[p]),lwd=3 )
+	points( p, COMPILE$VAR[[p]][Num_Perms+1,"VgVp"], col=gsub("1","4",COLS[p]),pch=20 )
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
