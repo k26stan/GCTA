@@ -41,6 +41,7 @@ PULL_PHENO=/projects/janssen/Psych/Scripts/GCTA/Pull_Pheno_Col.R
 PLOT_GRM=/projects/janssen/Psych/Scripts/GCTA/Plot_GRM.R
 PLOT_EST=/projects/janssen/Psych/Scripts/GCTA/Plot_Estimates.R
 PERMUTE=/projects/janssen/Psych/Scripts/GCTA/Permute.R
+PLOT_PERMUTED=/projects/janssen/Psych/Scripts/GCTA/Plot_Permuted.R
 
 ## Set Specific Paths
 VAR_PATH=${VAR_DIR}/${VAR_FILE}
