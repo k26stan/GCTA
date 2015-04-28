@@ -1,6 +1,6 @@
 ############################################################################
 ############################################################################
-## RA COHORT ###############################################################
+## PSYCH COHORTS ###########################################################
 ############################################################################
 ############################################################################
 
@@ -108,20 +108,20 @@ ALL/SNP
 
 ## Names/Paths
 echo \### Defining Set Variables and Paths at `date` \###
-DATE=20150317_Single_MAF5_SNP
+DATE=20150316_Derived_MAF1_ALL
 HOME_DIR=/projects/janssen/Heritability
 cd ${HOME_DIR}
 
 ## Files
-VAR_FILE=FULL_BED_SNP/BED_MAF5.SNP # BED_MAF5.SNP # 
+VAR_FILE=BED_MAF1.ALL # FULL_BED_SNP/BED_MAF5.SNP # 
 VAR_DIR=/projects/janssen/VCFs/PLINK
 PHENO_DIR=/projects/janssen/ASSOCIATION/PH-PHENOTYPES
-PHENO_FILE=20150310_Single_Pheno_Table.txt
-PHENO_NAME_LIST_FILE=Manu_PhenoCovs_Single.txt
+PHENO_FILE=20150313_Derived_Pheno_Table.txt
+PHENO_NAME_LIST_FILE=Manu_PhenoCovs_Derived.txt
 PHENO_NAME_LIST_DIR=/projects/janssen/Heritability
-COV_FILE=20150310_Single_Pheno_Table.txt
+COV_FILE=20150313_Derived_Pheno_Table.txt
 PC_COUNT=0
-START_STEP=3
+START_STEP=7
 
 ## Run The Script
 /projects/janssen/Psych/Scripts/GCTA/GCTA.sh \
