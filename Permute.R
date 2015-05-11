@@ -18,33 +18,35 @@ PHENO <- read.table(Pheno_Table,sep="\t",header=F)
 print(paste( "dim(Pheno_Table):",dim(PHENO) ))
 
 ## Load Covariate File
-COV <- read.table(Cov_Table,sep="\t",header=F)
-print(paste( "dim(Cov_Table):",dim(COV) ))
+if ( file.exists( Cov_Table ) ) { 
+	COV <- read.table(Cov_Table,sep="\t",header=F)
+	print(paste( "dim(Cov_Table):",dim(COV) ))
+}
 
 ## Get Common Samples (just to be sure)
-SAMPS <- intersect( as.character(PHENO[,1]), as.character(COV[,1]) )
-PHENO <- PHENO[ which(PHENO[,1] %in% SAMPS), ]
-COV <- COV[ which(COV[,1] %in% SAMPS), ]
+if ( file.exists( Cov_Table ) ) { 
+	SAMPS <- intersect( as.character(PHENO[,1]), as.character(COV[,1]) )
+	PHENO <- PHENO[ which(PHENO[,1] %in% SAMPS), ]
+	COV <- COV[ which(COV[,1] %in% SAMPS), ]
+}else{ SAMPS <- as.character(PHENO[,1]) }
 
 ## Permute ##
 for ( p in 1:Perm_Number ) {
-	## Sample Number of Patients
+	## Re-Sample Patients
 	REORDER <- sample( SAMPS )
 
-	## Make New Tables
+	## Compile/Write New Table(s)
 	PHENO.p <- PHENO
 	PHENO.p[,1] <- PHENO.p[,2] <- REORDER
-	COV.p <- COV
-	COV.p[,1] <- COV.p[,2] <- REORDER
-
-	## Path to Write
 	Pheno_Out <- gsub( "txt", paste(p,"txt",sep="."), Pheno_Table )
-	Cov_Out <- gsub( "txt", paste(p,"txt",sep="."), Cov_Table )
-
-	## Write Table
 	write.table( PHENO.p ,Pheno_Out,sep="\t",row.names=F,col.names=F,quote=F)
-	write.table( COV.p ,Cov_Out,sep="\t",row.names=F,col.names=F,quote=F)
-
+	
+	if ( file.exists( Cov_Table ) ) { 
+		COV.p <- COV
+		COV.p[,1] <- COV.p[,2] <- REORDER
+		Cov_Out <- gsub( "txt", paste(p,"txt",sep="."), Cov_Table )
+		write.table( COV.p ,Cov_Out,sep="\t",row.names=F,col.names=F,quote=F)
+	}
 }
 
 ######### END OF DOC ###########

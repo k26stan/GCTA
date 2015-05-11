@@ -211,6 +211,8 @@ echo \### 5 - `date` \###
 echo \### Estimate Heritability \###
 echo `date` "5 - Estimate Heritability" >> ${UPDATE_FILE}
 
+mkdir ${OUT_DIR}/Phenos
+
 IFSo=$IFS
 IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
 ## Loop through Phenotypes
@@ -244,16 +246,10 @@ then
 COVS_COMMAND=`echo $COVS_COMMAND | sed 's/COUN/CN_ARG,CN_AUS,CN_COL,CN_HUN,CN_LTU,CN_MEX,CN_MYS,CN_NZL,CN_POL,CN_RUS,CN_UKR/g'`
 fi # Close (if COUN)
 
-#####################################################
-## Compile Covariates into Correct Format
-NEW_COV_PATH=${OUT_DIR}/${COVS_FILENAME}_FULL.txt
-echo ${NEW_COV_PATH}
-Rscript ${PULL_COVS} ${COVS_COMMAND} ${OUT_DIR}/2-PCA_FULL.eigenvec ${COV_PATH} ${NEW_COV_PATH}
-
 fi # Close (if USE_COVARS)
 
 ## Pull out Phenotype to File
-NEW_PHENO_PATH=${OUT_DIR}/${pheno}_FULL.txt
+NEW_PHENO_PATH=${OUT_DIR}/Phenos/${pheno}_FULL.txt
 Rscript ${PULL_PHENO} ${PHENO_PATH} ${pheno} ${NEW_PHENO_PATH}
 
 EST_OUT=${OUT_DIR}/3-REML_${pheno}
@@ -262,6 +258,11 @@ EST_OUT=${OUT_DIR}/3-REML_${pheno}
  # If Covariates are Specified
 if [[ $USE_COVARS == TRUE && $COVS != "" ]]
 then
+## Compile Covariates into Correct Format
+NEW_COV_PATH=${OUT_DIR}/Phenos/${COVS_FILENAME}_FULL.txt
+echo ${NEW_COV_PATH}
+Rscript ${PULL_COVS} ${COVS_COMMAND} ${OUT_DIR}/2-PCA_FULL.eigenvec ${COV_PATH} ${NEW_COV_PATH}
+## Run GCTA w/ Covariates
 ${GCTA} \
 --grm 1-GRM_FULL.RM5 \
 --pheno ${NEW_PHENO_PATH} \
@@ -317,6 +318,7 @@ echo \### 7 - `date` \###
 echo \### Permute \###
 echo `date` "7 - Permute" >> ${UPDATE_FILE}
 
+mkdir ${OUT_DIR}/4-PERM/
 ## Specify Number of Permutations
 N_PERM=1000
 
@@ -325,12 +327,15 @@ IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
 ## Loop through Phenotypes
 # for line in `head -20 ${PHENO_NAME_LIST_PATH}`
 for line in `cat ${PHENO_NAME_LIST_PATH}`; do
+# for line in `cat ${PHENO_NAME_LIST_PATH} | grep MNcd`; do
+# for line in `cat ${PHENO_NAME_LIST_PATH} | grep "PRC\|Bwk\|VARdr\|VARwk"`; do
 # for line in `cat ${PHENO_NAME_LIST_PATH} | grep DEL | grep MNa`; do
+
 # Determine which Phenotype to Use
 pheno=`echo ${line} | awk '{print $1}'`
 
 ## Pull out Phenotype to File
-NEW_PHENO_PATH=${OUT_DIR}/${pheno}_FULL.txt
+NEW_PHENO_PATH=${OUT_DIR}/Phenos/${pheno}_FULL.txt
 
 ## If Covariates are being Used
 if [[ $USE_COVARS == TRUE ]]; then
@@ -354,7 +359,7 @@ COVS_COMMAND=`echo $COVS_COMMAND | sed 's/COUN/CN_ARG,CN_AUS,CN_COL,CN_HUN,CN_LT
 fi # Close (if COUN)
 
 ## Compile Covariates into Correct Format
-NEW_COV_PATH=${OUT_DIR}/${COVS_FILENAME}_FULL.txt
+NEW_COV_PATH=${OUT_DIR}/Phenos/${COVS_FILENAME}_FULL.txt
 echo ${NEW_COV_PATH}
 
 fi # Close (if USE_COVARS)
@@ -363,7 +368,6 @@ fi # Close (if USE_COVARS)
 ## Permute Phenotype/Covariate Files ##
 Rscript ${PERMUTE} ${NEW_PHENO_PATH} ${NEW_COV_PATH} ${N_PERM}
 
-mkdir ${OUT_DIR}/4-PERM/
 ## Loop Through Z Permutations
 for perm in `seq ${N_PERM}`; do
 
