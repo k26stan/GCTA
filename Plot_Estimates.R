@@ -11,11 +11,14 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- c( "/Users/kstandis/Downloads/20150126b_PHENO_NAMES/PHENO_NAMES.txt", "/Users/kstandis/Downloads/20150126b_PHENO_NAMES", "Cohort_Name" )
 # LINE <- c( "/projects/janssen/Heritability/Manuscript_Phenos_Covs.txt", "/projects/janssen/Heritability/20150310_ALL2b_Manuscript_Phenos_Covs", "TEMP" )
 # LINE <- c( "/projects/janssen/Heritability/Manuscript_Phenos_Covs.txt", "/projects/janssen/Heritability/20150310_ALL2b_Manuscript_Phenos_Covs", "TEMP" )
+# LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Single.SEL.txt", "/projects/janssen/Heritability/20150520_Single_SEL_MAF1_ALL_Manu_PhenoCovs_Single.SEL", "Full Cohort (MAF>1, SNP+Indel)" )
+# LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.SEL.txt", "/projects/janssen/Heritability/20150520_Derived_SEL_MAF1_ALL_Manu_PhenoCovs_Derived.SEL", "Full Cohort (MAF>1, SNP+Indel)" )
 Pheno_List <- LINE[1]
 PathToData <- LINE[2]
 Cohort_Name <- LINE[3]
 
 print( "Running: Plot_Estimates.R" )
+
 ###################################################
 ## LOAD DATA ######################################
 ###################################################
@@ -23,6 +26,38 @@ print( "Running: Plot_Estimates.R" )
 ## Load Phenotype List
 print( "Loading Phenotype List")
 PHENOS <- as.character( read.table( Pheno_List, header=F, fill=T )[,1] )
+PHENOS.n <- PHENOS
+
+## ***************** OPTIONAL: SINGLE ************************* ##
+
+# ## Change Names/Order for SINGLE Timepoint Estimates
+# PHENOS.n[1:28] <- paste( "POST",PHENOS.n[1:28],sep="_" )
+# ReOrder <- seq(1,28,7) + rep( 1:7-1,rep(4,7) )
+# PHENOS.n <- PHENOS.n[ c(ReOrder,29:length(PHENOS.n)) ]
+# PHENOS <- PHENOS[ c(ReOrder,29:length(PHENOS)) ]
+
+# ## To Plot only Subset of Phenotypes
+#  # "POST" treatment Measurements
+# PHENOS <- PHENOS[ grep("POST",PHENOS.n) ]
+# PHENOS.n <- PHENOS.n[ grep("POST",PHENOS.n) ]
+#  # "DEL" Measurements
+# PHENOS <- PHENOS[ grep("DEL",PHENOS.n) ]
+# PHENOS.n <- PHENOS.n[ grep("DEL",PHENOS.n) ]
+
+## ***************** OPTIONAL: DERIVED ************************* ##
+
+# ## To Plot only Subset of Phenotypes
+#  # Remove "28"JC Phenos
+# PHENOS <- PHENOS[ grep("28",PHENOS, invert=T) ]
+# PHENOS.n <- PHENOS.n[ grep("28",PHENOS.n, invert=T) ]
+#  # Extract only "MNa" Phenos
+# PHENOS <- PHENOS[ grep("MNa",PHENOS) ]
+# PHENOS.n <- PHENOS.n[ grep("MNa",PHENOS.n) ]
+#  # Extract non-"MNa" Phenos
+# PHENOS <- PHENOS[ grep("MNa",PHENOS, invert=T) ]
+# PHENOS.n <- PHENOS.n[ grep("MNa",PHENOS.n, invert=T) ]
+
+
 
 ## Load Heritability Estimates for Phenotypes
 print( "Loading/Compiling GCTA Results" )
@@ -62,25 +97,50 @@ PCHS <- rep( 1, nrow(VAR) )
 PCHS[ grep("DEL",rownames(VAR)) ] <- 20
 
 ## Set Plot Parameters
-XLIM <- c(min( 0,VAR[,"VgVp"]-SE[,"VgVp"], na.rm=T), max(1,max(VAR[,"VgVp"]+SE[,"VgVp"],na.rm=T)) )
-YLIM <- c( 0,nrow(VAR)+1 )
+YLIM <- c(min( 0,VAR[,"VgVp"]-SE[,"VgVp"], na.rm=T), max(1,max(VAR[,"VgVp"]+SE[,"VgVp"],na.rm=T)) )
+XLIM <- c( 0,nrow(VAR)+1 )
 WHICH_SIG <- which( MOD[,"Pval"] < .05 )
 ## Open Plot
-jpeg( paste(PathToData,"/GCTA_Estimates.jpeg",sep=""), width=1500,height=1000+50*length(PHENOS), pointsize=30 )
-plot( 0,0,type="n", xlim=XLIM+c(0,.4), ylim=YLIM, main=paste("Heritability Estimate -",Cohort_Name), xlab="% Phenotypic Variance", ylab="Phenotype", yaxt="n", xaxt="n" )
+jpeg( paste(PathToData,"/GCTA_Estimates.ALT.jpeg",sep=""), height=1500,width=1000+50*length(PHENOS), pointsize=30 )
+plot( 0,0,type="n", xlim=XLIM, ylim=YLIM+c(0,.4), main=paste("Heritability Estimate -",Cohort_Name), ylab="% Phenotypic Variance", xlab="Phenotype", yaxt="n", xaxt="n" )
  # Vertical Grid Lines
-abline( v=seq(-2,XLIM[2]+.4,.1), lty=2, col="grey50", lwd=1 )
-abline( v=c(0,1), lty=1, col="black", lwd=1 )
+abline( h=seq(-2,XLIM[2]+.4,.1), lty=2, col="grey50", lwd=1 )
+abline( h=c(0,1), lty=1, col="black", lwd=1 )
  # Horizontal Lines/Data
-arrows( 0, 1:nrow(VAR), 1, 1:nrow(VAR), col="black", lwd=1, length=0 )
-arrows( VAR[,"VgVp"]-SE[,"VgVp"], 1:nrow(VAR), VAR[,"VgVp"]+SE[,"VgVp"], 1:nrow(VAR), col=COLS, lty=LTYS, code=3, angle=90, length=.15, lwd=6 )
-points( VAR[,"VgVp"], 1:nrow(VAR), col=COLS, pch=PCHS, cex=1.4, lwd=3 )
+arrows( 1:nrow(VAR), 0, 1:nrow(VAR), 1, col="black", lwd=1, length=0 )
+arrows( 1:nrow(VAR), VAR[,"VgVp"]-SE[,"VgVp"], 1:nrow(VAR), VAR[,"VgVp"]+SE[,"VgVp"], col=COLS, lty=LTYS, code=3, angle=90, length=.15, lwd=6 )
+points( 1:nrow(VAR), VAR[,"VgVp"], col=COLS, pch=PCHS, cex=1.4, lwd=3 )
  # Axis/Labels/Significance
-axis(1, at=seq(-2,2,.2) )
-text( sapply( VAR[,"VgVp"]+SE[,"VgVp"], function(x) max(x,1) ) , 1:nrow(VAR), labels=gsub("LT8_DEL_","",rownames(VAR)), pos=4, cex=.8, col=COLS )
-if ( length(WHICH_SIG)>0 ) { text( rep(-.05,length(WHICH_SIG)), WHICH_SIG, labels="*", col=COLS[WHICH_SIG], cex=1.5 ) }
+axis(2, at=seq(-2,2,.2) )
+text( 1:nrow(VAR)-.25, .05+sapply( VAR[,"VgVp"]+SE[,"VgVp"], function(x) max(x,1) ), labels=PHENOS.n, pos=4, cex=.8, col=COLS, srt=90 )
+if ( length(WHICH_SIG)>0 ) { text( WHICH_SIG, rep(-.05,length(WHICH_SIG)), labels="*", col=COLS[WHICH_SIG], cex=1.5 ) }
 dev.off()
 
 ###################################################
 ## END OF DOC #####################################
 ###################################################
+
+
+
+
+
+
+# ## Set Plot Parameters
+# XLIM <- c(min( 0,VAR[,"VgVp"]-SE[,"VgVp"], na.rm=T), max(1,max(VAR[,"VgVp"]+SE[,"VgVp"],na.rm=T)) )
+# YLIM <- c( 0,nrow(VAR)+1 )
+# WHICH_SIG <- which( MOD[,"Pval"] < .05 )
+# ## Open Plot
+# jpeg( paste(PathToData,"/GCTA_Estimates.jpeg",sep=""), width=1500,height=1000+50*length(PHENOS), pointsize=30 )
+# plot( 0,0,type="n", xlim=XLIM+c(0,.4), ylim=YLIM, main=paste("Heritability Estimate -",Cohort_Name), xlab="% Phenotypic Variance", ylab="Phenotype", yaxt="n", xaxt="n" )
+#  # Vertical Grid Lines
+# abline( v=seq(-2,XLIM[2]+.4,.1), lty=2, col="grey50", lwd=1 )
+# abline( v=c(0,1), lty=1, col="black", lwd=1 )
+#  # Horizontal Lines/Data
+# arrows( 0, 1:nrow(VAR), 1, 1:nrow(VAR), col="black", lwd=1, length=0 )
+# arrows( VAR[,"VgVp"]-SE[,"VgVp"], 1:nrow(VAR), VAR[,"VgVp"]+SE[,"VgVp"], 1:nrow(VAR), col=COLS, lty=LTYS, code=3, angle=90, length=.15, lwd=6 )
+# points( VAR[,"VgVp"], 1:nrow(VAR), col=COLS, pch=PCHS, cex=1.4, lwd=3 )
+#  # Axis/Labels/Significance
+# axis(1, at=seq(-2,2,.2) )
+# text( sapply( VAR[,"VgVp"]+SE[,"VgVp"], function(x) max(x,1) ) , 1:nrow(VAR), labels=gsub("LT8_DEL_","",rownames(VAR)), pos=4, cex=.8, col=COLS )
+# if ( length(WHICH_SIG)>0 ) { text( rep(-.05,length(WHICH_SIG)), WHICH_SIG, labels="*", col=COLS[WHICH_SIG], cex=1.5 ) }
+# dev.off()
