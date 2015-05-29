@@ -47,9 +47,12 @@ PHENOS.n <- PHENOS
 ## ***************** OPTIONAL: DERIVED ************************* ##
 
 # ## To Plot only Subset of Phenotypes
-#  # Remove "28"JC Phenos
-# PHENOS <- PHENOS[ grep("28",PHENOS, invert=T) ]
-# PHENOS.n <- PHENOS.n[ grep("28",PHENOS.n, invert=T) ]
+ # Remove "28"JC Phenos
+PHENOS <- PHENOS[ grep("28",PHENOS, invert=T) ]
+PHENOS.n <- PHENOS.n[ grep("28",PHENOS.n, invert=T) ]
+ # Extract only "DEL" Phenos
+PHENOS <- PHENOS[ grep("DEL",PHENOS) ]
+PHENOS.n <- PHENOS.n[ grep("DEL",PHENOS.n) ]
 #  # Extract only "MNa" Phenos
 # PHENOS <- PHENOS[ grep("MNa",PHENOS) ]
 # PHENOS.n <- PHENOS.n[ grep("MNa",PHENOS.n) ]
@@ -101,7 +104,7 @@ YLIM <- c(min( 0,VAR[,"VgVp"]-SE[,"VgVp"], na.rm=T), max(1,max(VAR[,"VgVp"]+SE[,
 XLIM <- c( 0,nrow(VAR)+1 )
 WHICH_SIG <- which( MOD[,"Pval"] < .05 )
 ## Open Plot
-jpeg( paste(PathToData,"/GCTA_Estimates.ALT.jpeg",sep=""), height=1500,width=1000+50*length(PHENOS), pointsize=30 )
+jpeg( paste(PathToData,"/GCTA_Estimates.ALL.jpeg",sep=""), height=1500,width=1000+50*length(PHENOS), pointsize=30 )
 plot( 0,0,type="n", xlim=XLIM, ylim=YLIM+c(0,.4), main=paste("Heritability Estimate -",Cohort_Name), ylab="% Phenotypic Variance", xlab="Phenotype", yaxt="n", xaxt="n" )
  # Vertical Grid Lines
 abline( h=seq(-2,XLIM[2]+.4,.1), lty=2, col="grey50", lwd=1 )

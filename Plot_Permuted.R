@@ -11,6 +11,8 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.txt", "/projects/janssen/Heritability/20150316_Derived_MAF1_ALL_Manu_PhenoCovs_Derived", "1000" )
 # LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.txt", "/projects/janssen/Heritability/20150506_Derived_MAF1_ALL_Manu_PhenoCovs_Derived", "100" )
 # LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.SEL.txt", "/projects/janssen/Heritability/20150506_Derived_MAF1_ALL_Manu_PhenoCovs_Derived.SEL", "1000" )
+# LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.SEL.txt", "/projects/janssen/Heritability/20150520_Derived_SEL_MAF1_ALL_Manu_PhenoCovs_Derived.SEL", "1000" )
+# LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Single.SEL.txt", "/projects/janssen/Heritability/20150520_Single_SEL_MAF1_ALL_Manu_PhenoCovs_Single.SEL", "1000" )
 Pheno_List <- LINE[1]
 PathToData <- LINE[2]
 Num_Perms <- as.numeric( LINE[3] )
@@ -29,8 +31,34 @@ PHENOS <- as.character( PHENOS.l[,1] )
 # TEMP.PHENO.list <- gsub("_1.hsq","",TEMP.PHENO.list)
 # PHENOS <- PHENOS[ -grep("MNw",PHENOS) ]
 # PHENOS <- PHENOS[ -grep("28",PHENOS) ]
-PHENOS.post <- PHENOS[ grep("POST",PHENOS) ]
-PHENOS.del <- PHENOS[ grep("DEL",PHENOS) ]
+# PHENOS.post <- PHENOS[ grep("POST",PHENOS) ]
+# PHENOS.del <- PHENOS[ grep("DEL",PHENOS) ]
+
+## ***************** OPTIONAL: SINGLE ************************* ##
+
+## Change Names/Order for SINGLE Timepoint Estimates
+ReOrder <- seq(1,28,7) + rep( 1:7-1,rep(4,7) )
+PHENOS <- PHENOS[ c(ReOrder,29:length(PHENOS)) ]
+
+## To Plot only Subset of Phenotypes
+#  # "POST" treatment Measurements
+# PHENOS <- PHENOS[ grep("POST",PHENOS) ]
+ # "DEL" Measurements
+PHENOS <- PHENOS[ grep("DEL",PHENOS) ]
+
+## ***************** OPTIONAL: DERIVED ************************* ##
+
+# ## To Plot only Subset of Phenotypes
+#  # Remove "28"JC Phenos
+# PHENOS <- PHENOS[ grep("28",PHENOS, invert=T) ]
+#  # Extract only "DEL" Phenos
+# PHENOS <- PHENOS[ grep("DEL",PHENOS) ]
+#  # Extract only "MNa" Phenos
+# PHENOS <- PHENOS[ grep("MNa",PHENOS) ]
+#  # Extract non-"MNa" Phenos
+# PHENOS <- PHENOS[ grep("MNa",PHENOS, invert=T) ]
+
+
 
 ## Load Heritability Estimates for Phenotypes
 print( "Loading/Compiling GCTA Results" )
@@ -70,7 +98,12 @@ for ( p in 1:length(PHENOS) ) {
 COMPILE.full <- list( EST, VAR, SE, MOD )
 names(COMPILE.full) <- c("EST","VAR","SE","MOD")
 save( COMPILE.full, file=paste(PathToData,"/4-PERM_Compile.Rdata",sep="") )
+# load( paste(PathToData,"/4-PERM_Compile.Rdata",sep="") )
 COMPILE <- COMPILE.full
+ # Optionally Remove 
+for ( i in 1:length(COMPILE) ) {
+	COMPILE[[i]] <- COMPILE[[i]][PHENOS]
+}
 
 ###################################################
 ## MAKE PLOTS #####################################
@@ -89,14 +122,22 @@ COLS[ grep("rTJC",names(COMPILE$VAR)) ] <- "dodgerblue1"
 COLS[ grep("lCRP",names(COMPILE$VAR)) ] <- "chartreuse1"
 LTYS <- rep( 2, length(COMPILE$VAR) )
 LTYS[ grep("DEL",rownames(COMPILE$VAR)) ] <- 1
+# PCHS <- rep( "o", length(COMPILE$VAR) )
+# PCHS[ grep("MNa",names(COMPILE$VAR)) ] <- "A"
+# PCHS[ grep("Bwk",names(COMPILE$VAR)) ] <- "B"
+# PCHS[ grep("PRC",names(COMPILE$VAR)) ] <- "C"
+# PCHS[ grep("MNcd",names(COMPILE$VAR)) ] <- "D"
+# PCHS[ grep("VARdr",names(COMPILE$VAR)) ] <- "E"
+# PCHS[ grep("VARwk",names(COMPILE$VAR)) ] <- "F"
+# PCHS[ grep("POST",names(COMPILE$VAR)) ] <- "G"
 PCHS <- rep( "o", length(COMPILE$VAR) )
-PCHS[ grep("MNa",names(COMPILE$VAR)) ] <- "A"
-PCHS[ grep("Bwk",names(COMPILE$VAR)) ] <- "B"
-PCHS[ grep("PRC",names(COMPILE$VAR)) ] <- "C"
-PCHS[ grep("MNcd",names(COMPILE$VAR)) ] <- "D"
-PCHS[ grep("VARdr",names(COMPILE$VAR)) ] <- "E"
-PCHS[ grep("VARwk",names(COMPILE$VAR)) ] <- "F"
-PCHS[ grep("POST",names(COMPILE$VAR)) ] <- "G"
+PCHS[ grep("WAG4",names(COMPILE$VAR)) ] <- "A"
+PCHS[ grep("WAG12",names(COMPILE$VAR)) ] <- "B"
+PCHS[ grep("WAG20",names(COMPILE$VAR)) ] <- "C"
+PCHS[ grep("WAG28",names(COMPILE$VAR)) ] <- "D"
+PCHS[ grep("FL",names(COMPILE$VAR)) ] <- "E"
+
+
 
 # load( "/Users/kstandis/Data/Burn/Results/20150423_GCTA_Perm_Test.Rdata" )
 # Num_Perms <- nrow( COMPILE$MOD[[1]] ) - 1
@@ -131,11 +172,11 @@ for ( p in 1:length(COMPILE$MOD) ) {
 } ; dev.off()
 
 ## Plot Permuted vs Actual P-Values
+P.dat.comp <- unlist(lapply( COMPILE$MOD, function(x) x["True","Pval"] ))
 PCHS.leg <- data.frame( LABS=unlist(lapply(strsplit(names(P.dat.comp),"_"),function(x) paste(x[1],x[2],sep="_"))), PCHS )
 PCHS.leg <- PCHS.leg[ which(!duplicated(PCHS.leg$PCHS)), ]
 COLS.leg <- data.frame( LABS=unlist(lapply(strsplit(names(P.dat.comp),"_"),function(x) x[3])), COLS )
 COLS.leg <- COLS.leg[ which(!duplicated(COLS.leg$COLS)), ]
-P.dat.comp <- unlist(lapply( COMPILE$MOD, function(x) x["True","Pval"] ))
 LIM <- c(0, max(-log10( c(P.dat.comp,P.perm.comp) )) )
 jpeg( paste(PathToData,"/Perm_Pvals.jpeg",sep=""), width=1600,height=1600, pointsize=30 )
 plot( 0,0, type="n", xlim=LIM,ylim=LIM, xlab="GCTA: -log10(p)",ylab="Permuted: -log10(p)", main="Permuted vs GCTA P-Values" )
