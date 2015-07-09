@@ -48,8 +48,8 @@ PHENOS.n <- PHENOS
 
 # ## To Plot only Subset of Phenotypes
  # Remove "28"JC Phenos
-PHENOS <- PHENOS[ grep("28",PHENOS, invert=T) ]
-PHENOS.n <- PHENOS.n[ grep("28",PHENOS.n, invert=T) ]
+PHENOS <- PHENOS[ grep("JC28",PHENOS, invert=T) ]
+PHENOS.n <- PHENOS.n[ grep("JC28",PHENOS.n, invert=T) ]
  # Extract only "DEL" Phenos
 PHENOS <- PHENOS[ grep("DEL",PHENOS) ]
 PHENOS.n <- PHENOS.n[ grep("DEL",PHENOS.n) ]
@@ -118,6 +118,15 @@ axis(2, at=seq(-2,2,.2) )
 text( 1:nrow(VAR)-.25, .05+sapply( VAR[,"VgVp"]+SE[,"VgVp"], function(x) max(x,1) ), labels=PHENOS.n, pos=4, cex=.8, col=COLS, srt=90 )
 if ( length(WHICH_SIG)>0 ) { text( WHICH_SIG, rep(-.05,length(WHICH_SIG)), labels="*", col=COLS[WHICH_SIG], cex=1.5 ) }
 dev.off()
+
+###################################################
+## SAVE COMPILED TABLES ###########################
+###################################################
+
+## Compile Data
+COMPILE <- list(EST=EST,VAR=VAR,SE=SE,MOD=MOD)
+PathToSave <- paste(PathToData,"/GCTA_Estimates.ALL.Rdata",sep="")
+save( COMPILE, file=PathToSave )
 
 ###################################################
 ## END OF DOC #####################################
