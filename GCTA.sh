@@ -55,7 +55,7 @@ mkdir ${OUT_DIR}
 cd ${OUT_DIR}
 
 ###########################################################
-## Pull some Info out of Parameters ##
+## Pull some Info out of Parameters ## 
 
 # ## Get Names of Specific Files
 # TEMP=(${VAR_FILE//\// })
