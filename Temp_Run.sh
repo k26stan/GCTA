@@ -1,3 +1,9 @@
+## Notes for Updated GCTA Pipeline
+ # Using new version of GCTA
+# Using GREML-LDMS Approach
+  # That is Robust to LD and MAF
+
+
 ############################################################################
 ############################################################################
 ## PSYCH COHORTS ###########################################################
