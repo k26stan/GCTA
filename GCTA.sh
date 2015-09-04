@@ -33,9 +33,11 @@ START_STEP=${11} # Which Step do you want to start on?
 ## Constant Paths ##
 
 ## Public Tools
-GCTA=/projects/janssen/Tools/gcta/gcta64 # /gpfs/group/schork/nwineing/gcta/gcta64
+GCTA=/projects/janssen/Tools/gcta/gcta64
+PLINK=/projects/janssen/Tools/plink_linux_x86_64/plink
 
 ## Custom Scripts
+GROUP_LD_MAF_R=/projects/janssen/Psych/Scripts/GCTA/Group_LD_MAF.R
 PULL_COVS=/projects/janssen/Psych/Scripts/GCTA/Pull_Cov_Cols.R
 PULL_PHENO=/projects/janssen/Psych/Scripts/GCTA/Pull_Pheno_Col.R
 PLOT_GRM=/projects/janssen/Psych/Scripts/GCTA/Plot_GRM.R
@@ -100,21 +102,99 @@ echo `date` "1 - Define Set Variables and Paths - DONE" > ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
 ##########################################################################
-## 2 ## Calculate Genetic Relationship Matrix ############################
+## 2 ## Calculate Linkage Disequilibrium #################################
 ##########################################################################
 if [ "$START_STEP" -le 2 ]; then
 echo \### 2 - `date` \###
+echo \### Calculate LD \###
+echo `date` "2 - Calculate LD" >> ${UPDATE_FILE}
+
+##########################################################
+## Prep for LD Calculation ##
+
+## Calculate Allele Frequency
+ # For Removal of Single/Doubletons
+N_PATS=`wc -l ${VAR_PATH}.fam | cut -f1 -d " "`
+calc() {
+	awk "BEGIN { print "$*" }"
+}
+MAF=`calc 1/$N_PATS`
+echo $MAF
+
+## Create Path for LD Files
+mkdir ${OUT_DIR}/0_LD
+
+## FCT: Calculate LD by Chromosome
+LD_By_Chrom() {
+chr_list=$1
+for chr in $chr_list; do
+## Pull out Chromosome for LD Analysis
+${PLINK} \
+--bfile ${VAR_PATH} \
+--make-bed \
+--maf ${MAF} \
+--chr ${chr} \
+--out TEMP_CHR_BED.${chr}
+## Calculate LD for Chromosome
+${GCTA} \
+--bfile TEMP_CHR_BED.${chr} \
+--thread-num 1 \
+--autosome \
+--chr ${chr} \
+--ld-score-region 200 \
+--out ${OUT_DIR}/0_LD/0-LD_CHR${chr}
+## Remove Temporary BED file
+rm TEMP_CHR_BED.${chr}*
+done
+}
+
+## Run Function for LD Calculation
+LD_By_Chrom "`echo {1..22..2}`" &
+LD_By_Chrom "`echo {2..22..2}`" &
+wait
+
+## Done
+echo `date` "2 - Calculate LD - DONE" >> ${UPDATE_FILE}
+printf "V\nV\nV\nV\nV\nV\nV\nV\n"
+fi
+##########################################################################
+## 3 ## Calculate Genetic Relationship Matrix ############################
+##########################################################################
+if [ "$START_STEP" -le 3 ]; then
+echo \### 3 - `date` \###
 echo \### Calculate GRM \###
-echo `date` "2 - Calculate GRM" >> ${UPDATE_FILE}
+echo `date` "3 - Calculate GRM" >> ${UPDATE_FILE}
+
+##########################################################
+## Group Variants by LD & MAF
+Rscript ${GROUP_LD_MAF_R} ${OUT_DIR}/0_LD
+
+## Create Path for GRM Files
+mkdir ${OUT_DIR}/1_GRM
 
 ##########################################################
 ## Calculate GRM Using all variants
-${GCTA} \
+for snp_file in `ls ${OUT_DIR}/0_LD/*GRP.txt`; do
+## Pull out Group of SNPs for GRM Calculation
+${PLINK} \
 --bfile ${VAR_PATH} \
+--make-bed \
+--extract ${snp_file} \
+--out TEMP_BED
+## Calculate GRM on Group of SNPs
+file_name_only=`echo $snp_file | xargs -n1 basename`
+${GCTA} \
+--bfile TEMP_BED \
 --thread-num 1 \
 --autosome \
 --make-grm \
---out 1-GRM_FULL
+--out ${OUT_DIR}/1_GRM/1-GRM_FULL.${file_name_only%%.GRP.txt}
+done
+
+## Remove Temp BED File
+rm TEMP_BED*
+## Create List of GRM Files (for --mgrm command)
+ls ${OUT_DIR}/1_GRM/* | grep "grm.id" | sed 's/.grm.id//g' > ${OUT_DIR}/GRM_List.txt
 
 ##########################################################
 ## Filter relationships below .05
@@ -124,37 +204,37 @@ ${GCTA} \
 # --grm-cutoff 0.05 \
 # --make-grm \
 # --out 1-GRM_FULL.RM5
-for file in `ls 1-GRM_FULL*`
-do
-extension=`echo ${file} | sed 's/1-GRM_FULL//g'`
-new_file=1-GRM_FULL.RM5${extension}
-cp ${file} ${new_file}
-done
+# for file in `ls ${OUT_DIR}/1_GRM/1-GRM_FULL*`
+# do
+# extension=`echo ${file} | sed 's/1-GRM_FULL//g'`
+# new_file=1-GRM_FULL.RM5${extension}
+# cp ${file} ${new_file}
+# done
 
 ## Done
-echo `date` "2 - Calculate GRM - DONE" >> ${UPDATE_FILE}
+echo `date` "3 - Calculate GRM - DONE" >> ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
-##########################################################################
-## 3 ## Calculate Principal Components ###################################
-##########################################################################
-if [ "$START_STEP" -le 3 ]; then
-echo \### 3 - `date` \###
-echo \### Calculate PCs \###
-echo `date` "3 - Calculate PCs" >> ${UPDATE_FILE}
+# ##########################################################################
+# ## 3 ## Calculate Principal Components ###################################
+# ##########################################################################
+# if [ "$START_STEP" -le 3 ]; then
+# echo \### 3 - `date` \###
+# echo \### Calculate PCs \###
+# echo `date` "3 - Calculate PCs" >> ${UPDATE_FILE}
 
-#####################################################
-## Do PCA Analysis for Whole Genome
- # GCTA --pca
- ${GCTA} --pca 20 \
- --grm 1-GRM_FULL.RM5 \
- --thread-num 1 \
- --out 2-PCA_FULL
+# #####################################################
+# ## Do PCA Analysis for each GRM
+# for snp_file in `ls ${OUT_DIR}/0_LD/*GRP.txt`; do
+#  ${GCTA} --pca 20 \
+#  --grm ${OUT_DIR}/1_GRM/1-GRM_FULL.RM5 \
+#  --thread-num 1 \
+#  --out 2-PCA_FULL
 
-## Done
-echo `date` "3 - Calculate PCs - DONE" >> ${UPDATE_FILE}
-printf "V\nV\nV\nV\nV\nV\nV\nV\n"
-fi
+# ## Done
+# echo `date` "3 - Calculate PCs - DONE" >> ${UPDATE_FILE}
+# printf "V\nV\nV\nV\nV\nV\nV\nV\n"
+# fi
 ##########################################################################
 ## 4 ## Pull out Covariates ##############################################
 ##########################################################################
@@ -212,6 +292,7 @@ echo \### Estimate Heritability \###
 echo `date` "5 - Estimate Heritability" >> ${UPDATE_FILE}
 
 mkdir ${OUT_DIR}/Phenos
+mkdir ${OUT_DIR}/3_REML/
 
 IFSo=$IFS
 IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
@@ -252,7 +333,7 @@ fi # Close (if USE_COVARS)
 NEW_PHENO_PATH=${OUT_DIR}/Phenos/${pheno}_FULL.txt
 Rscript ${PULL_PHENO} ${PHENO_PATH} ${pheno} ${NEW_PHENO_PATH}
 
-EST_OUT=${OUT_DIR}/3-REML_${pheno}
+EST_OUT=${OUT_DIR}/3_REML/3-REML_${pheno}
 
 ## Run GCTA to get Heritability Estimates
  # If Covariates are Specified
@@ -263,22 +344,22 @@ NEW_COV_PATH=${OUT_DIR}/Phenos/${COVS_FILENAME}_FULL.txt
 echo ${NEW_COV_PATH}
 Rscript ${PULL_COVS} ${COVS_COMMAND} ${OUT_DIR}/2-PCA_FULL.eigenvec ${COV_PATH} ${NEW_COV_PATH}
 ## Run GCTA w/ Covariates
+ # gcta64 --reml --mgrm multi_GRMs.txt --pheno phen.txt --out test
 ${GCTA} \
---grm 1-GRM_FULL.RM5 \
+--reml \
+--mgrm ${OUT_DIR}/GRM_List.txt \
 --pheno ${NEW_PHENO_PATH} \
 --qcovar ${NEW_COV_PATH} \
---reml \
---reml-maxit 1000 \
+--reml-maxit 700 \
 --reml-est-fix \
 --reml-pred-rand \
 --out ${EST_OUT}
 else
- # If Covariates are NOT Specified
 ${GCTA} \
---grm 1-GRM_FULL.RM5 \
---pheno ${NEW_PHENO_PATH} \
 --reml \
---reml-maxit 1000 \
+--mgrm ${OUT_DIR}/GRM_List.txt \
+--pheno ${NEW_PHENO_PATH} \
+--reml-maxit 700 \
 --reml-est-fix \
 --reml-pred-rand \
 --out ${EST_OUT}
