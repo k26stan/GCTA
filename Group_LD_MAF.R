@@ -15,6 +15,7 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- "/projects/janssen/HLA"
 # LINE <- "/Users/kstandis/Downloads/20150904_GCTA_Test/ART3001"
 PathToLD <- LINE[1]
+Num_LD_Grps <- LINE[2]
 
 print( "Running: Group_LD_MAF.R" )
 
@@ -43,9 +44,11 @@ LD.full <- data.frame( LD.full, LD_SCORE=LD.full$mean_rsq*LD.full$snp_num )
 print( "Grouping Variants by LD/MAF" )
 
 ## Create Keys for MAF & LD Groups
-RNG.MAF <- c( 0, .001, .01, .05, .1, .25, 1 )
+# RNG.MAF <- c( 0, .001, .01, .05, .1, .25, 1 )
+RNG.MAF <- c( 0, .01, .05, .1, .25, 1 )
 KEY.MAF <- data.frame( CUT=RNG.MAF, GRP=paste("M",RNG.MAF,sep="") )
-QNT.LD <- c( 0, .25, .5, .75, 1 )
+# QNT.LD <- c( 0, .25, .5, .75, 1 )
+QNT.LD <- seq( 0, 1, length.out=Num_LD_Grps+1 )
 KEY.LD <- data.frame( CUT=quantile(LD.full$LD_SCORE,QNT.LD), GRP=paste("LDq",0:4,sep="") )
 
 ## Group by Level of MAF/LD

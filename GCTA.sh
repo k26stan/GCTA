@@ -167,7 +167,7 @@ echo `date` "3 - Calculate GRM" >> ${UPDATE_FILE}
 
 ##########################################################
 ## Group Variants by LD & MAF
-Rscript ${GROUP_LD_MAF_R} ${OUT_DIR}/0_LD
+Rscript ${GROUP_LD_MAF_R} ${OUT_DIR}/0_LD 3
 
 ## Create Path for GRM Files
 mkdir ${OUT_DIR}/1_GRM
