@@ -14,8 +14,10 @@
 LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- "/projects/janssen/HLA"
 # LINE <- "/Users/kstandis/Downloads/20150904_GCTA_Test/ART3001"
+# LINE <- c( "/projects/janssen/Heritability/20150915_Test_Run_Manu_PhenoCovs_Derived.SEL/0_LD","3" )
 PathToLD <- LINE[1]
-Num_LD_Grps <- LINE[2]
+Num_LD_Grps <- as.numeric(LINE[2])
+print( Num_LD_Grps + 1 )
 
 print( "Running: Group_LD_MAF.R" )
 
@@ -49,7 +51,7 @@ RNG.MAF <- c( 0, .01, .05, .1, .25, 1 )
 KEY.MAF <- data.frame( CUT=RNG.MAF, GRP=paste("M",RNG.MAF,sep="") )
 # QNT.LD <- c( 0, .25, .5, .75, 1 )
 QNT.LD <- seq( 0, 1, length.out=Num_LD_Grps+1 )
-KEY.LD <- data.frame( CUT=quantile(LD.full$LD_SCORE,QNT.LD), GRP=paste("LDq",0:4,sep="") )
+KEY.LD <- data.frame( CUT=quantile(LD.full$LD_SCORE,QNT.LD), GRP=paste("LDq",0:(Num_LD_Grps),sep="") )
 
 ## Group by Level of MAF/LD
 GRP.MAF <- cut( LD.full$freq, KEY.MAF$CUT, KEY.MAF$GRP[-1], include.lowest=T )
