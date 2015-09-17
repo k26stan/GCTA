@@ -158,16 +158,28 @@ echo `date` "2 - Calculate LD - DONE" >> ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
 ##########################################################################
-## 3 ## Calculate Genetic Relationship Matrix ############################
+## 3 ## Create LD SNP Groups #############################################
 ##########################################################################
 if [ "$START_STEP" -le 3 ]; then
 echo \### 3 - `date` \###
-echo \### Calculate GRM \###
-echo `date` "3 - Calculate GRM" >> ${UPDATE_FILE}
+echo \### Create LD Groups \###
+echo `date` "3 - Create LD Groups" >> ${UPDATE_FILE}
 
 ##########################################################
 ## Group Variants by LD & MAF
 Rscript ${GROUP_LD_MAF_R} ${OUT_DIR}/0_LD 3
+
+## Done
+echo `date` "3 - Create LD Groups - DONE" >> ${UPDATE_FILE}
+printf "V\nV\nV\nV\nV\nV\nV\nV\n"
+fi
+##########################################################################
+## 4 ## Calculate Genetic Relationship Matrix ############################
+##########################################################################
+if [ "$START_STEP" -le 4 ]; then
+echo \### 4 - `date` \###
+echo \### Calculate GRM \###
+echo `date` "4 - Calculate GRM" >> ${UPDATE_FILE}
 
 ## Create Path for GRM Files
 mkdir ${OUT_DIR}/1_GRM
@@ -212,7 +224,7 @@ ls ${OUT_DIR}/1_GRM/* | grep "grm.id" | sed 's/.grm.id//g' > ${OUT_DIR}/GRM_List
 # done
 
 ## Done
-echo `date` "3 - Calculate GRM - DONE" >> ${UPDATE_FILE}
+echo `date` "4 - Calculate GRM - DONE" >> ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
 # ##########################################################################
