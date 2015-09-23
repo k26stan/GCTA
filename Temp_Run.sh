@@ -6,7 +6,7 @@
 
 ## Names/Paths
 echo \### Defining Set Variables and Paths at `date` \###
-DATE=20150915_Test_Run
+DATE=20150918_Test_Run
 HOME_DIR=/projects/janssen/Heritability
 cd ${HOME_DIR}
 
@@ -19,7 +19,7 @@ PHENO_NAME_LIST_FILE=Manu_PhenoCovs_Derived.SEL.txt
 PHENO_NAME_LIST_DIR=/projects/janssen/Heritability
 COV_FILE=20150506_Derived_Pheno_Table.txt
 PC_COUNT=0
-START_STEP=4
+START_STEP=1
 
 ## Run The Script
 /projects/janssen/Psych/Scripts/GCTA/GCTA.sh \

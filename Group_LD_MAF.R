@@ -14,7 +14,7 @@
 LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- "/projects/janssen/HLA"
 # LINE <- "/Users/kstandis/Downloads/20150904_GCTA_Test/ART3001"
-# LINE <- c( "/projects/janssen/Heritability/20150915_Test_Run_Manu_PhenoCovs_Derived.SEL/0_LD","3" )
+# LINE <- c( "/projects/janssen/Heritability/20150918_Test_Run_Manu_PhenoCovs_Derived.SEL/0_LD","3" )
 PathToLD <- LINE[1]
 Num_LD_Grps <- as.numeric(LINE[2])
 print( Num_LD_Grps + 1 )
@@ -46,16 +46,26 @@ LD.full <- data.frame( LD.full, LD_SCORE=LD.full$mean_rsq*LD.full$snp_num )
 print( "Grouping Variants by LD/MAF" )
 
 ## Create Keys for MAF & LD Groups
+ # Minor Allele Frequency
 # RNG.MAF <- c( 0, .001, .01, .05, .1, .25, 1 )
-RNG.MAF <- c( 0, .01, .05, .1, .25, 1 )
+# RNG.MAF <- c( 0, .01, .05, .1, .25, 1 )
+RNG.MAF <- c( 0, .01, .05, .1, 1 )
 KEY.MAF <- data.frame( CUT=RNG.MAF, GRP=paste("M",RNG.MAF,sep="") )
+ # Linkage Disequilibrium
 # QNT.LD <- c( 0, .25, .5, .75, 1 )
 QNT.LD <- seq( 0, 1, length.out=Num_LD_Grps+1 )
-KEY.LD <- data.frame( CUT=quantile(LD.full$LD_SCORE,QNT.LD), GRP=paste("LDq",0:(Num_LD_Grps),sep="") )
+# KEY.LD <- data.frame( CUT=quantile(LD.full$LD_SCORE,QNT.LD), GRP=paste("LDq",0:(Num_LD_Grps),sep="") )
 
 ## Group by Level of MAF/LD
 GRP.MAF <- cut( LD.full$freq, KEY.MAF$CUT, KEY.MAF$GRP[-1], include.lowest=T )
-GRP.LD <- cut( LD.full$LD_SCORE, KEY.LD$CUT, KEY.LD$GRP[-1], include.lowest=T )
+# GRP.LD <- cut( LD.full$LD_SCORE, KEY.LD$CUT, KEY.LD$GRP[-1], include.lowest=T )
+GRP.LD <- numeric(length(GRP.MAF))
+for ( maf in sort(unique(GRP.MAF)) ) {
+	WHICH <- which(GRP.MAF==maf)
+	KEY.LD <- data.frame( CUT=quantile(LD.full$LD_SCORE[WHICH],QNT.LD), GRP=paste("LDq",0:(Num_LD_Grps),sep="") )
+	GRP.LD[WHICH] <- cut( LD.full$LD_SCORE[WHICH], KEY.LD$CUT, KEY.LD$GRP[-1], include.lowest=T )
+
+}
 
 ## Designate Actual Group based on BOTH
 GRP <- paste( GRP.MAF, GRP.LD, sep="_" )

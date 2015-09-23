@@ -165,9 +165,8 @@ echo \### 3 - `date` \###
 echo \### Create LD Groups \###
 echo `date` "3 - Create LD Groups" >> ${UPDATE_FILE}
 
-##########################################################
 ## Group Variants by LD & MAF
-Rscript ${GROUP_LD_MAF_R} ${OUT_DIR}/0_LD 3
+Rscript ${GROUP_LD_MAF_R} ${OUT_DIR}/0_LD 2
 
 ## Done
 echo `date` "3 - Create LD Groups - DONE" >> ${UPDATE_FILE}
@@ -187,17 +186,24 @@ mkdir ${OUT_DIR}/1_GRM
 ##########################################################
 ## Calculate GRM Using all variants
 for snp_file in `ls ${OUT_DIR}/0_LD/*GRP.txt`; do
-## Pull out Group of SNPs for GRM Calculation
-${PLINK} \
---bfile ${VAR_PATH} \
---make-bed \
---extract ${snp_file} \
---out TEMP_BED
-## Calculate GRM on Group of SNPs
 file_name_only=`echo $snp_file | xargs -n1 basename`
+# ## Pull out Group of SNPs for GRM Calculation
+# ${PLINK} \
+# --bfile ${VAR_PATH} \
+# --make-bed \
+# --extract ${snp_file} \
+# --out TEMP_BED
+## Calculate GRM on Group of SNPs
+# ${GCTA} \
+# --bfile TEMP_BED \
+# --thread-num 1 \
+# --autosome \
+# --make-grm \
+# --out ${OUT_DIR}/1_GRM/1-GRaM_FULL.${file_name_only%%.GRP.txt}
 ${GCTA} \
---bfile TEMP_BED \
+--bfile ${VAR_PATH} \
 --thread-num 1 \
+--extract ${snp_file} \
 --autosome \
 --make-grm \
 --out ${OUT_DIR}/1_GRM/1-GRM_FULL.${file_name_only%%.GRP.txt}
@@ -365,6 +371,7 @@ ${GCTA} \
 --reml-maxit 700 \
 --reml-est-fix \
 --reml-pred-rand \
+--reml-no-constrain \
 --out ${EST_OUT}
 else
 ${GCTA} \
@@ -374,6 +381,7 @@ ${GCTA} \
 --reml-maxit 700 \
 --reml-est-fix \
 --reml-pred-rand \
+--reml-no-constrain \
 --out ${EST_OUT}
 fi
 
