@@ -17,6 +17,7 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- c( "/projects/janssen/Heritability/20150918_Test_Run_Manu_PhenoCovs_Derived.SEL/0_LD","3" )
 PathToLD <- LINE[1]
 Num_LD_Grps <- as.numeric(LINE[2])
+PathToOut <- gsub("0_LD","1_GRM",PathToLD)
 print( Num_LD_Grps + 1 )
 
 print( "Running: Group_LD_MAF.R" )
@@ -49,23 +50,24 @@ print( "Grouping Variants by LD/MAF" )
  # Minor Allele Frequency
 # RNG.MAF <- c( 0, .001, .01, .05, .1, .25, 1 )
 # RNG.MAF <- c( 0, .01, .05, .1, .25, 1 )
-RNG.MAF <- c( 0, .01, .05, .1, 1 )
+# RNG.MAF <- c( 0, .01, .05, .1, 1 )
+RNG.MAF <- c( 0, .01, .05, 1 )
 KEY.MAF <- data.frame( CUT=RNG.MAF, GRP=paste("M",RNG.MAF,sep="") )
  # Linkage Disequilibrium
 # QNT.LD <- c( 0, .25, .5, .75, 1 )
 QNT.LD <- seq( 0, 1, length.out=Num_LD_Grps+1 )
-# KEY.LD <- data.frame( CUT=quantile(LD.full$LD_SCORE,QNT.LD), GRP=paste("LDq",0:(Num_LD_Grps),sep="") )
+KEY.LD <- data.frame( CUT=quantile(LD.full$LD_SCORE,QNT.LD), GRP=paste("LDq",0:(Num_LD_Grps),sep="") )
 
 ## Group by Level of MAF/LD
 GRP.MAF <- cut( LD.full$freq, KEY.MAF$CUT, KEY.MAF$GRP[-1], include.lowest=T )
-# GRP.LD <- cut( LD.full$LD_SCORE, KEY.LD$CUT, KEY.LD$GRP[-1], include.lowest=T )
-GRP.LD <- numeric(length(GRP.MAF))
-for ( maf in sort(unique(GRP.MAF)) ) {
-	WHICH <- which(GRP.MAF==maf)
-	KEY.LD <- data.frame( CUT=quantile(LD.full$LD_SCORE[WHICH],QNT.LD), GRP=paste("LDq",0:(Num_LD_Grps),sep="") )
-	GRP.LD[WHICH] <- cut( LD.full$LD_SCORE[WHICH], KEY.LD$CUT, KEY.LD$GRP[-1], include.lowest=T )
+GRP.LD <- cut( LD.full$LD_SCORE, KEY.LD$CUT, KEY.LD$GRP[-1], include.lowest=T )
+# GRP.LD <- numeric(length(GRP.MAF))
+# for ( maf in sort(unique(GRP.MAF)) ) {
+# 	WHICH <- which(GRP.MAF==maf)
+# 	KEY.LD <- data.frame( CUT=quantile(LD.full$LD_SCORE[WHICH],QNT.LD), GRP=paste("LDq",0:(Num_LD_Grps),sep="") )
+# 	GRP.LD[WHICH] <- cut( LD.full$LD_SCORE[WHICH], KEY.LD$CUT, KEY.LD$GRP[-1], include.lowest=T )
 
-}
+# }
 
 ## Designate Actual Group based on BOTH
 GRP <- paste( GRP.MAF, GRP.LD, sep="_" )
@@ -78,7 +80,7 @@ print( "Saving SNP Files" )
 
 ## Save Files w/ SNP Lists
 for ( grp in GRP.uniq ) {
-	PathToSave <- paste(PathToLD,"/",grp,".GRP.txt",sep="")
+	PathToSave <- paste(PathToOut,"/",grp,".GRP.txt",sep="")
 	SNPs <- LD.full$SNP[ GRP==grp ]
 	write.table( SNPs, file=PathToSave, col.names=F,row.names=F,quote=F )
 }

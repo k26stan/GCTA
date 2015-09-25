@@ -166,7 +166,7 @@ echo \### Create LD Groups \###
 echo `date` "3 - Create LD Groups" >> ${UPDATE_FILE}
 
 ## Group Variants by LD & MAF
-Rscript ${GROUP_LD_MAF_R} ${OUT_DIR}/0_LD 2
+Rscript ${GROUP_LD_MAF_R} ${OUT_DIR}/1_GRM 3
 
 ## Done
 echo `date` "3 - Create LD Groups - DONE" >> ${UPDATE_FILE}
@@ -185,7 +185,7 @@ mkdir ${OUT_DIR}/1_GRM
 
 ##########################################################
 ## Calculate GRM Using all variants
-for snp_file in `ls ${OUT_DIR}/0_LD/*GRP.txt`; do
+for snp_file in `ls ${OUT_DIR}/1_GRM/*GRP.txt`; do
 file_name_only=`echo $snp_file | xargs -n1 basename`
 # ## Pull out Group of SNPs for GRM Calculation
 # ${PLINK} \
