@@ -15,12 +15,14 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- "/projects/janssen/HLA"
 # LINE <- "/Users/kstandis/Downloads/20150904_GCTA_Test/ART3001"
 # LINE <- c( "/projects/janssen/Heritability/20150918_Test_Run_Manu_PhenoCovs_Derived.SEL/0_LD","3" )
+# LINE <- c( "/projects/janssen/Heritability/20150924_Test_Run_Manu_PhenoCovs_Derived/0_LD","3" )
 PathToLD <- LINE[1]
 Num_LD_Grps <- as.numeric(LINE[2])
 PathToOut <- gsub("0_LD","1_GRM",PathToLD)
 print( Num_LD_Grps + 1 )
 
 print( "Running: Group_LD_MAF.R" )
+print(paste("LD Directory:",PathToLD))
 
 ###################################################
 ## LOAD DATA ######################################
