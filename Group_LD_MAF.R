@@ -16,10 +16,11 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- "/Users/kstandis/Downloads/20150904_GCTA_Test/ART3001"
 # LINE <- c( "/projects/janssen/Heritability/20150918_Test_Run_Manu_PhenoCovs_Derived.SEL/0_LD","3" )
 # LINE <- c( "/projects/janssen/Heritability/20150924_Test_Run_Manu_PhenoCovs_Derived/0_LD","3" )
+# LINE <- c( "/projects/janssen/Heritability/20151208_TestRun_Manu_PhenoCovs_Derived/0_LD","3" )
 PathToLD <- LINE[1]
 Num_LD_Grps <- as.numeric(LINE[2])
 PathToOut <- gsub("0_LD","1_GRM",PathToLD)
-print( Num_LD_Grps + 1 )
+print( Num_LD_Grps ) # print( Num_LD_Grps + 1 )
 
 print( "Running: Group_LD_MAF.R" )
 print(paste("LD Directory:",PathToLD))
@@ -35,8 +36,12 @@ LD <- list()
 for ( file in File_List ) {
 	tag <- gsub( "0-LD_","", gsub(".mrsq.ld","",file, fixed=T) )
 	LD[[tag]] <- read.table( paste(PathToLD,file,sep="/"),header=T, stringsAsFactors=F )
-	print(paste( tag,"Done" ))
+	print(paste( tag,"Loaded" ))
 }
+
+# ## For MAF>=.05
+# LD.05 <- lapply( LD, function(x) x[which(x$freq>=.05),] )
+# LD.full <- Reduce( rbind, LD.05 )
 
 ## Combine Chromosomes into Single Group
 print( "Merging LD Files" )

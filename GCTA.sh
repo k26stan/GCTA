@@ -24,10 +24,12 @@ VAR_DIR=$4
 PHENO_DIR=$5
 PHENO_FILE=$6
 PHENO_NAME_LIST_FILE=$7 # Which Phenotypes and Covariates are you using?
-PHENO_NAME_LIST_DIR=$8
+PHENO_NAME_LIST_DIR=$8 # Directory for above file
 COV_FILE=$9 # Path to Covariate File or "F"
-PC_COUNT=${10} # How many PCs to Include as Covariates?
-START_STEP=${11} # Which Step do you want to start on?
+LD_MAF_GRPS=${10} # LD_MAF
+GRM_CUTOFF=${11} # Decimal
+PC_COUNT=${12} # How many PCs to Include as Covariates?
+START_STEP=${13} # Which Step do you want to start on?
 
 ###########################################################
 ## Constant Paths ##
@@ -59,10 +61,6 @@ cd ${OUT_DIR}
 ###########################################################
 ## Pull some Info out of Parameters ## 
 
-# ## Get Names of Specific Files
-# TEMP=(${VAR_FILE//\// })
-# VAR_FILE_NAME=${TEMP[${#TEMP[@]} - 1]} # Get Name of Variant File
-
 ## Determine if I'm using Covariates
 if [ -e ${COV_PATH} ]
 then
@@ -71,28 +69,10 @@ else
 USE_COVARS=FALSE
 fi
 
-# ## Specify list of Covariates to include (for command and for filename)
-# if [[ $USE_COVARS == TRUE ]]
-# then
+## Pull out number of LD & MAF Groups
+LD_GRPS=`echo $LD_MAF_GRPS | cut -d_ -f1`
+MAF_GRPS=`echo $LD_MAF_GRPS | cut -d_ -f2`
 
-# if [ $PC_COUNT -eq 0 ]
-# then
-# COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
-# COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
-# else
-# PCS=`seq 1 ${PC_COUNT}`
-# PCS_COMMAND=`echo "PC"${PCS} | sed 's/ /QQQPC/g'`
-# COVS_COMMAND=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/,/g'`
-# COVS_FILENAME=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/_/g'`
-# fi
-
-# ## Incorporate Country/Site of Study as Binary Covariate (if Included)
-# if [[ $COVS == *COUN* ]]
-# then
-# COVS_COMMAND=`echo $COVS_COMMAND | sed 's/COUN/CN_ARG,CN_AUS,CN_COL,CN_HUN,CN_LTU,CN_MEX,CN_MYS,CN_NZL,CN_POL,CN_RUS,CN_UKR/g'`
-# fi
-
-# fi # Close (if USE_COVARS)
 ## Specify a File to which to Write Updates
 UPDATE_FILE=${OUT_DIR}/Update.txt
 
@@ -112,30 +92,23 @@ echo `date` "2 - Calculate LD" >> ${UPDATE_FILE}
 ##########################################################
 ## Prep for LD Calculation ##
 
-## Calculate Allele Frequency
- # For Removal of Single/Doubletons
-N_PATS=`wc -l ${VAR_PATH}.fam | cut -f1 -d " "`
+## FCT: Calculate minimum MAF
 calc() {
-	awk "BEGIN { print "$*" }"
+awk "BEGIN { print "$*" }"
 }
-MAF=`calc 1/$N_PATS`
-echo $MAF
-
-## Create Path for LD Files
-mkdir ${OUT_DIR}/0_LD
 
 ## FCT: Calculate LD by Chromosome
 LD_By_Chrom() {
 chr_list=$1
 for chr in $chr_list; do
-## Pull out Chromosome for LD Analysis
+ # Pull out Chromosome for LD Analysis
 ${PLINK} \
 --bfile ${VAR_PATH} \
 --make-bed \
 --maf ${MAF} \
 --chr ${chr} \
 --out TEMP_CHR_BED.${chr}
-## Calculate LD for Chromosome
+ # Calculate LD for Chromosome
 ${GCTA} \
 --bfile TEMP_CHR_BED.${chr} \
 --thread-num 1 \
@@ -143,15 +116,27 @@ ${GCTA} \
 --chr ${chr} \
 --ld-score-region 200 \
 --out ${OUT_DIR}/0_LD/0-LD_CHR${chr}
-## Remove Temporary BED file
+ # Remove Temporary BED file
 rm TEMP_CHR_BED.${chr}*
 done
 }
 
-## Run Function for LD Calculation
+## Calculate Allele Frequency for Removal of Single/Doubletons
+N_PATS=`wc -l ${VAR_PATH}.fam | cut -f1 -d " "`
+MAF=`calc 1/$N_PATS`
+echo $MAF
+
+## Create Path for LD Files
+mkdir ${OUT_DIR}/0_LD
+
+## If necessary, Calculate LD Files
+if [ "$LD_GRPS" -gt 1 -o "$MAF_GRPS" -gt 1 ] ; then
 LD_By_Chrom "`echo {1..22..2}`" &
 LD_By_Chrom "`echo {2..22..2}`" &
 wait
+else
+echo "LD Structure Not Calculated"
+fi
 
 ## Done
 echo `date` "2 - Calculate LD - DONE" >> ${UPDATE_FILE}
@@ -165,8 +150,12 @@ echo \### 3 - `date` \###
 echo \### Create LD Groups \###
 echo `date` "3 - Create LD Groups" >> ${UPDATE_FILE}
 
-## Group Variants by LD & MAF
+## If necessary, Determine LD/MAF SNP Groups
+if [ "$LD_GRPS" -gt 1 -o "$MAF_GRPS" -gt 1 ] ; then
 Rscript ${GROUP_LD_MAF_R} ${OUT_DIR}/0_LD 3
+else
+echo "LD Structure Not Calculated"
+fi
 
 ## Done
 echo `date` "3 - Create LD Groups - DONE" >> ${UPDATE_FILE}
@@ -184,22 +173,12 @@ echo `date` "4 - Calculate GRM" >> ${UPDATE_FILE}
 mkdir ${OUT_DIR}/1_GRM
 
 ##########################################################
-## Calculate GRM Using variants sets
+## Calculate GRM(s)
+if [ "$LD_GRPS" -gt 1 -o "$MAF_GRPS" -gt 1 ] ; then
+
+ # Using Multiple variants sets from LD/MAF Stratification
 for snp_file in `ls ${OUT_DIR}/1_GRM/*GRP.txt`; do
 file_name_only=`echo $snp_file | xargs -n1 basename`
-# ## Pull out Group of SNPs for GRM Calculation
-# ${PLINK} \
-# --bfile ${VAR_PATH} \
-# --make-bed \
-# --extract ${snp_file} \
-# --out TEMP_BED
-## Calculate GRM on Group of SNPs
-# ${GCTA} \
-# --bfile TEMP_BED \
-# --thread-num 1 \
-# --autosome \
-# --make-grm \
-# --out ${OUT_DIR}/1_GRM/1-GRaM_FULL.${file_name_only%%.GRP.txt}
 ${GCTA} \
 --bfile ${VAR_PATH} \
 --thread-num 1 \
@@ -208,207 +187,186 @@ ${GCTA} \
 --make-grm \
 --out ${OUT_DIR}/1_GRM/1-GRM_FULL.${file_name_only%%.GRP.txt}
 done
-
-## Remove Temp BED File
-rm TEMP_BED*
-## Create List of GRM Files (for --mgrm command)
+ # Create List of GRM Files (for --mgrm command)
 ls ${OUT_DIR}/1_GRM/* | grep "grm.id" | sed 's/.grm.id//g' > ${OUT_DIR}/GRM_List.txt
+ # Put individual GRMs together into 1 (for PCA)
+if [ $PC_COUNT -ne 0 ] ; then
+${GCTA} \
+--mgrm ${OUT_DIR}/GRM_List.txt \
+--thread-num 1 \
+--make-grm \
+--out ${OUT_DIR}/1_GRM/1-GRM_FULL
+fi
 
-##########################################################
-## Filter relationships below .05
-# ${GCTA} \
-# --grm 1-GRM_FULL \
-# --thread-num 1 \
-# --grm-cutoff 0.05 \
-# --make-grm \
-# --out 1-GRM_FULL.RM5
-# for file in `ls ${OUT_DIR}/1_GRM/1-GRM_FULL*`
-# do
-# extension=`echo ${file} | sed 's/1-GRM_FULL//g'`
-# new_file=1-GRM_FULL.RM5${extension}
-# cp ${file} ${new_file}
-# done
+else
+ # Using all Variants at once
+${GCTA} \
+--bfile ${VAR_PATH} \
+--thread-num 1 \
+--maf .01 \
+--autosome \
+--make-grm \
+--out ${OUT_DIR}/1_GRM/1-GRM_FULL
+
+fi # Close If LD/MAF Group > 1
 
 ## Done
 echo `date` "4 - Calculate GRM - DONE" >> ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
-# ##########################################################################
-# ## 3 ## Calculate Principal Components ###################################
-# ##########################################################################
-# if [ "$START_STEP" -le 3 ]; then
-# echo \### 3 - `date` \###
-# echo \### Calculate PCs \###
-# echo `date` "3 - Calculate PCs" >> ${UPDATE_FILE}
-
-# #####################################################
-# ## Do PCA Analysis for each GRM
-# for snp_file in `ls ${OUT_DIR}/0_LD/*GRP.txt`; do
-#  ${GCTA} --pca 20 \
-#  --grm ${OUT_DIR}/1_GRM/1-GRM_FULL.RM5 \
-#  --thread-num 1 \
-#  --out 2-PCA_FULL
-
-# ## Done
-# echo `date` "3 - Calculate PCs - DONE" >> ${UPDATE_FILE}
-# printf "V\nV\nV\nV\nV\nV\nV\nV\n"
-# fi
 ##########################################################################
-## 4 ## Pull out Covariates ##############################################
-##########################################################################
-# if [ "$START_STEP" -le 4 ]; then
-# echo \### 4 - `date` \###
-# echo \### Collect Covariates \###
-# echo `date` "4 - Collect Covariates" >> ${UPDATE_FILE}
-
-# ## If Covariates are being Used
-# if [[ $USE_COVARS == TRUE ]]
-# then
-
-# COVS=`
-# ## Specify list of Covariates to include (for command and for filename)
-# if [[ $USE_COVARS == TRUE ]]
-# then
-
-# if [ $PC_COUNT -eq 0 ]
-# then
-# COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
-# COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
-# else
-# PCS=`seq 1 ${PC_COUNT}`
-# PCS_COMMAND=`echo "PC"${PCS} | sed 's/ /QQQPC/g'`
-# COVS_COMMAND=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/,/g'`
-# COVS_FILENAME=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/_/g'`
-# fi
-
-# ## Incorporate Country/Site of Study as Binary Covariate (if Included)
-# if [[ $COVS == *COUN* ]]
-# then
-# COVS_COMMAND=`echo $COVS_COMMAND | sed 's/COUN/CN_ARG,CN_AUS,CN_COL,CN_HUN,CN_LTU,CN_MEX,CN_MYS,CN_NZL,CN_POL,CN_RUS,CN_UKR/g'`
-# fi
-
-# fi # Close (if USE_COVARS)
-
-# #####################################################
-# ## Compile Covariates into Correct Format
-# NEW_COV_PATH=${OUT_DIR}/${COVS_FILENAME}_FULL.txt
-# echo ${NEW_COV_PATH}
-# Rscript ${PULL_COVS} ${COVS_COMMAND} ${OUT_DIR}/2-PCA_FULL.eigenvec ${COV_PATH} ${NEW_COV_PATH}
-
-# fi
-
-# ## Done
-# echo `date` "4 - Collect Covariates - DONE" >> ${UPDATE_FILE}
-# printf "V\nV\nV\nV\nV\nV\nV\nV\n"
-# fi
-##########################################################################
-## 5 ## Estimate Heritability ############################################
+## 5 ## Deal w/ Population Structure #####################################
 ##########################################################################
 if [ "$START_STEP" -le 5 ]; then
 echo \### 5 - `date` \###
+echo \### Population Structure \###
+echo `date` "5 - Population Structure" >> ${UPDATE_FILE}
+
+#####################################################
+## Do PCA Analysis from GRM
+if [ $PC_COUNT -ne 0 ]
+then
+ ${GCTA} --pca 20 \
+ --grm ${OUT_DIR}/1_GRM/1-GRM_FULL \
+ --thread-num 1 \
+ --out 2-PCA
+fi
+
+#########################################################
+## Filter relationships above X
+if (( $(echo "$GRM_CUTOFF > 0" | bc -l) )) ; then
+${GCTA} \
+--grm ${OUT_DIR}/1_GRM/1-GRM_FULL \
+--thread-num 1 \
+--grm-cutoff ${GRM_CUTOFF} \
+--make-grm \
+--out ${OUT_DIR}/1_GRM/1-GRM_CUT
+USE_GRM=${OUT_DIR}/1_GRM/1-GRM_CUT
+else
+USE_GRM=${OUT_DIR}/1_GRM/1-GRM_FULL
+fi
+
+## Done
+echo `date` "5 - Population Structure - DONE" >> ${UPDATE_FILE}
+printf "V\nV\nV\nV\nV\nV\nV\nV\n"
+fi
+
+##########################################################################
+## 6 ## Estimate Heritability ############################################
+##########################################################################
+if [ "$START_STEP" -le 6 ]; then
+echo \### 6 - `date` \###
 echo \### Estimate Heritability \###
-echo `date` "5 - Estimate Heritability" >> ${UPDATE_FILE}
+echo `date` "6 - Estimate Heritability" >> ${UPDATE_FILE}
 
 mkdir ${OUT_DIR}/Phenos
 mkdir ${OUT_DIR}/3_REML/
 
+## Specify Field Separater
 IFSo=$IFS
 IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
-## Loop through Phenotypes
-# for line in `head -20 ${PHENO_NAME_LIST_PATH}`
-for line in `cat ${PHENO_NAME_LIST_PATH}`
-do
+
+#####################################################
+## Loop through Phenotypes ##########################
+# line=`head -1 ${PHENO_NAME_LIST_PATH}`
+# line=`head -10 ${PHENO_NAME_LIST_PATH} | tail -1`
+for line in `cat ${PHENO_NAME_LIST_PATH}` ; do
+# for line in `head -10 ${PHENO_NAME_LIST_PATH}` ; do
+
+#####################################################
+## Pull out Phenotype to Individual File
  # Determine which Phenotype to Use
 pheno=`echo ${line} | awk '{print $1}'`
-
- ## If Covariates are being Used
-if [[ $USE_COVARS == TRUE ]]
-then
- # Determine Which Covariates for this Phenotype
-   # (from PHENO_NAME_LIST_FILE)
-COVS=`echo ${line} | cut -d$'\t' -f2- | sed 's/\t/QQQ/g'`
- # If PC's specified
-if [ $PC_COUNT -eq 0 ]
-then
-COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
-COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
-else
-PCS=`seq 1 ${PC_COUNT}`
-PCS_COMMAND=`echo "PC"${PCS} | sed 's/ /QQQPC/g'`
-COVS_COMMAND=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/,/g'`
-COVS_FILENAME=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/_/g'`
-fi # Close (if PCs)
-
-## Incorporate Country/Site of Study as Binary Covariate (if Included)
-if [[ $COVS == *COUN* ]]
-then
-COVS_COMMAND=`echo $COVS_COMMAND | sed 's/COUN/CN_ARG,CN_AUS,CN_COL,CN_HUN,CN_LTU,CN_MEX,CN_MYS,CN_NZL,CN_POL,CN_RUS,CN_UKR/g'`
-fi # Close (if COUN)
-
-fi # Close (if USE_COVARS)
-
-## Pull out Phenotype to File
+ # Create New Pehnotype File
 NEW_PHENO_PATH=${OUT_DIR}/Phenos/${pheno}_FULL.txt
 Rscript ${PULL_PHENO} ${PHENO_PATH} ${pheno} ${NEW_PHENO_PATH}
 
-EST_OUT=${OUT_DIR}/3_REML/3-REML_${pheno}
-
-## Run GCTA to get Heritability Estimates
- # If Covariates are Specified
-if [[ $USE_COVARS == TRUE && $COVS != "" ]]
-then
-## Compile Covariates into Correct Format
-NEW_COV_PATH=${OUT_DIR}/Phenos/${COVS_FILENAME}_FULL.txt
-echo ${NEW_COV_PATH}
-Rscript ${PULL_COVS} ${COVS_COMMAND} ${OUT_DIR}/2-PCA_FULL.eigenvec ${COV_PATH} ${NEW_COV_PATH}
-## Run GCTA w/ Covariates
- # gcta64 --reml --mgrm multi_GRMs.txt --pheno phen.txt --out test
-${GCTA} \
---reml \
---mgrm ${OUT_DIR}/GRM_List.txt \
---pheno ${NEW_PHENO_PATH} \
---qcovar ${NEW_COV_PATH} \
---reml-maxit 700 \
---reml-est-fix \
---reml-pred-rand \
---reml-no-constrain \
---out ${EST_OUT}
+#####################################################
+## Specify single or multiple GRMs
+if [ "$LD_GRPS" -gt 1 -o "$MAF_GRPS" -gt 1 ] ; then
+specify_grm="--mgrm ${OUT_DIR}/GRM_List.txt"
 else
-${GCTA} \
---reml \
---mgrm ${OUT_DIR}/GRM_List.txt \
---pheno ${NEW_PHENO_PATH} \
---reml-maxit 700 \
---reml-est-fix \
---reml-pred-rand \
---reml-no-constrain \
---out ${EST_OUT}
+specify_grm="--grm ${USE_GRM}"
 fi
 
-done # Close Phenotype Loop
+#####################################################
+## Set up Covariate List
+ # If Covariates are being Used
+if [[ $USE_COVARS == TRUE ]] ; then
+ # Determine Which Covariates for this Phenotype (from PHENO_NAME_LIST_FILE)
+COVS=`echo ${line} | cut -d$'\t' -f2- | sed 's/\t/QQQ/g'`
+ # If PC's specified
+if [ $PC_COUNT -gt 0 ] ; then
+PCS=`seq 1 ${PC_COUNT}`
+PCS_COMMAND=`echo "PC"${PCS} | sed 's/ /QQQPC/g'`
+COVS_COMMAND=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/,/g'`
+COVS_FILENAME=`echo "${COVS}QQQPC${PC_COUNT}" | sed 's/QQQ/_/g'`
+else
+COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
+COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
+fi # Close (if PCs)
+fi # Close (if USE_COVARS)
 
-IFS=$IFSo # Reset
+#####################################################
+## Specify Covariates or Not
+if [[ $USE_COVARS == TRUE && $COVS_COMMAND != "" ]] ; then
+NEW_COV_PATH=${OUT_DIR}/Phenos/Cov_${COVS_FILENAME}_FULL.txt
+ # Compile Covariates into Correct Format
+Rscript ${PULL_COVS} ${COVS_COMMAND} ${OUT_DIR}/2-PCA.eigenvec ${COV_PATH} ${NEW_COV_PATH}
+specify_cov_pheno="--pheno ${NEW_PHENO_PATH} --qcovar ${NEW_COV_PATH}"
+else
+specify_cov_pheno="--pheno ${NEW_PHENO_PATH}"
+fi
+
+#####################################################
+## Set Path for output of GCTA Heritability Estimate
+PATH_OUT=${OUT_DIR}/3_REML/3-REML_${pheno}
+# echo \## Path to Output: $PATH_OUT
+# echo \## GRM flag: $specify_grm
+# echo \## Cov/Phenos flag: $specify_cov_pheno
+
+#####################################################
+## Compile Commands into .run File
+ # Create Command
+COMMAND="${GCTA} --reml \
+${specify_grm} \
+${specify_cov_pheno} \
+--reml-maxit 700 \
+--reml-est-fix \
+--reml-pred-rand \
+--out ${PATH_OUT}"
+ # Append Commands to "COMMANDS" list file
+echo $COMMAND >> ${OUT_DIR}/3_REML/COMMANDS.run
+
+done # Close Phenotype Loop
+IFS=$' \t\n' # Reset
+
+## Run Command from List
+chmod 777 ${OUT_DIR}/3_REML/COMMANDS.run
+${OUT_DIR}/3_REML/COMMANDS.run
+for file in `ls 3_REML/*MNa*hsq`; do echo $file ; grep "V(G)/" $file ; grep "Pval" $file ; done
+# rm 3_REML/3*
 
 ## Done
-echo `date` "5 - Estimate Heritability - DONE" >> ${UPDATE_FILE}
+echo `date` "6 - Estimate Heritability - DONE" >> ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
 ##########################################################################
-## 6 ## Plot GRM & Estimates #############################################
+## 7 ## Plot GRM & Estimates #############################################
 ##########################################################################
-if [ "$START_STEP" -le 6 ]; then
-echo \### 6 - `date` \###
+if [ "$START_STEP" -le 7 ]; then
+echo \### 7 - `date` \###
 echo \### Make Plots \###
-echo `date` "6 - Make Plots" >> ${UPDATE_FILE}
+echo `date` "7 - Make Plots" >> ${UPDATE_FILE}
 
 ## Plot Genetic Relationship Matrices
-Rscript ${PLOT_GRM} 1-GRM_FULL
+Rscript ${PLOT_GRM} ${USE_GRM}
 
 ## Plot Heritability Estimates
 Rscript ${PLOT_EST} ${PHENO_NAME_LIST_PATH} ${OUT_DIR} ${VAR_FILE}
 
 ## Done
-echo `date` "6 - Make Plots - DONE" >> ${UPDATE_FILE}
+echo `date` "7 - Make Plots - DONE" >> ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
 ##########################################################################
@@ -421,7 +379,7 @@ echo `date` "7 - Permute" >> ${UPDATE_FILE}
 
 mkdir ${OUT_DIR}/4-PERM/
 ## Specify Number of Permutations
-N_PERM=1000
+N_PERM=100
 
 IFSo=$IFS
 IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
@@ -479,7 +437,7 @@ EST_OUT=${OUT_DIR}/4-PERM/${pheno}_${perm}
 # If Covariates are Specified
 if [[ $USE_COVARS == TRUE && $COVS != "" ]]; then
 ${GCTA} \
---grm 1-GRM_FULL.RM5 \
+--grm 1-GRM_CUT \
 --pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
 --qcovar ${NEW_COV_PATH%%txt}${perm}.txt \
 --reml \
@@ -489,7 +447,7 @@ ${GCTA} \
 --out ${EST_OUT}
 else # If Covariates are NOT Specified
 ${GCTA} \
---grm 1-GRM_FULL.RM5 \
+--grm 1-GRM_CUT \
 --pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
 --reml \
 --reml-maxit 1000 \
