@@ -6,13 +6,13 @@
 
 ## Names/Paths
 echo \### Defining Set Variables and Paths at `date` \###
-DATE=20151210_TestRun
+DATE=20151212_TestRun_LD.2
 HOME_DIR=/projects/janssen/Heritability
 cd ${HOME_DIR}
 
 ## Files
 # VAR_FILE=BED_FULL.ALL # PsychChip_R092670-PSY-3006_R092670_arm
-VAR_FILE=BED_MAF1.LD_Prune # PsychChip_R092670-PSY-3006_R092670_arm
+VAR_FILE=BED_MAF1.LD_Prune.R.2.HWE-20 # PsychChip_R092670-PSY-3006_R092670_arm
 VAR_DIR=/projects/janssen/VCFs/LD_Prune
 PHENO_DIR=/projects/janssen/ASSOCIATION/PH-PHENOTYPES
 PHENO_FILE=20150506_Derived_Pheno_Table.txt
@@ -21,7 +21,7 @@ PHENO_NAME_LIST_DIR=/projects/janssen/Heritability
 COV_FILE=20150506_Derived_Pheno_Table.txt
 LD_MAF_GRPS=1_1
 GRM_CUTOFF=.05
-PC_COUNT=10
+PC_COUNT=4
 START_STEP=1
 
 ## Run The Script

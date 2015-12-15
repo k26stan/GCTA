@@ -11,6 +11,7 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- "/Users/kstandis/Downloads/1-GRM_FULL"
 # LINE <- "/projects/janssen/Heritability/20151208_TestRun_Manu_PhenoCovs_Derived/1_GRM/1-GRM_FULL"
 # LINE <- "/projects/janssen/Heritability/20151210_TestRun_Manu_PhenoCovs_Derived/1_GRM/1-GRM_FULL"
+# LINE <- "/projects/janssen/Heritability/20151212_TestRun_LD.2_Manu_PhenoCovs_Derived/1_GRM/1-GRM_FULL"
 PathToFile <- LINE[1]
 
 ###################################################

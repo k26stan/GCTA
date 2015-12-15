@@ -437,7 +437,7 @@ EST_OUT=${OUT_DIR}/4-PERM/${pheno}_${perm}
 # If Covariates are Specified
 if [[ $USE_COVARS == TRUE && $COVS != "" ]]; then
 ${GCTA} \
---grm 1-GRM_CUT \
+--grm ${OUT_DIR}/1_GRM/1-GRM_CUT \
 --pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
 --qcovar ${NEW_COV_PATH%%txt}${perm}.txt \
 --reml \
@@ -447,7 +447,7 @@ ${GCTA} \
 --out ${EST_OUT}
 else # If Covariates are NOT Specified
 ${GCTA} \
---grm 1-GRM_CUT \
+--grm ${OUT_DIR}/1_GRM/1-GRM_CUT \
 --pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
 --reml \
 --reml-maxit 1000 \
