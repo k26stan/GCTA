@@ -9,13 +9,14 @@ Pheno_Name <- LINE[2]
 New_Pheno_Table <- LINE[3]
 
 ## Print Inputs
+print( "!!Running: Pull_Pheno_Cols.R" )
 print(paste( "Pheno_Table:", Pheno_Table ))
 print(paste( "Pheno_Name:", Pheno_Name ))
 print(paste( "New_Pheno_Table:", New_Pheno_Table ))
 
 ## Load Phenotype File
 PHENO <- read.table(Pheno_Table,sep="\t",header=T)
-print(paste( "dim(Pheno_Table):",dim(PHENO) ))
+# print(paste( "dim(Pheno_Table):",dim(PHENO) ))
 
 ## Pull Phenotype Columne
 PHENO_COL <- c("IID",Pheno_Name)

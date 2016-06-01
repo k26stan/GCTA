@@ -14,6 +14,10 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- "/projects/janssen/Heritability/20151212_TestRun_LD.2_Manu_PhenoCovs_Derived/1_GRM/1-GRM_FULL"
 PathToFile <- LINE[1]
 
+## Print Inputs
+print( "!!Running: Plot_GRM.R" )
+print(paste( "Path:", PathToFile ))
+
 ###################################################
 ## LOAD DATA ######################################
 ###################################################
@@ -35,10 +39,10 @@ ReadGRMBin <- function(prefix, AllN=F, size=4) {
 	grm <- readBin(BinFile, n=n*(n+1)/2, what=numeric(0), size=size)
 	NFile <- file(NFileName, "rb")
 	if(AllN==T){
-		print( "AllN == T" )
+		# print( "AllN == T" )
 		N <- readBin(NFile, n=n*(n+1)/2, what=numeric(0), size=size)
 	}else{
-		print( "AllN != T" )
+		# print( "AllN != T" )
 		N <- readBin(NFile, n=1, what=numeric(0), size=size)
 	}
 	i <- sapply(1:n, sum_i)
@@ -52,10 +56,15 @@ PathToFile.CUT <- gsub( "GRM_FULL","GRM_CUT",PathToFile )
 AllN <- T
 size <- 4
 DAT.FULL <- ReadGRMBin( PathToFile, AllN, size )
-DAT.CUT <- ReadGRMBin( PathToFile.CUT, AllN, size )
 
-DAT.LIST <- list( DAT.FULL, DAT.CUT )
-names(DAT.LIST) <- c("FULL","CUT")
+if ( file.exists(PathToFile.CUT) ) {
+	DAT.CUT <- ReadGRMBin( PathToFile.CUT, AllN, size )	
+	DAT.LIST <- list( DAT.FULL, DAT.CUT )
+	names(DAT.LIST) <- c("FULL","CUT")
+}else{
+	DAT.LIST <- list( DAT.FULL )
+	names(DAT.LIST) <- c("FULL")
+}
 
 #################################################
 ## REFORMAT & PLOT DATA #########################

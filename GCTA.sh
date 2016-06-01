@@ -69,6 +69,14 @@ else
 USE_COVARS=FALSE
 fi
 
+## Determine if GRM Cutoff is Used
+if (( $(echo "$GRM_CUTOFF > 0" | bc -l) )) ; then
+USE_GRM=${OUT_DIR}/1_GRM/1-GRM_CUT
+else
+USE_GRM=${OUT_DIR}/1_GRM/1-GRM_FULL
+fi
+echo $USE_GRM
+
 ## Pull out number of LD & MAF Groups
 LD_GRPS=`echo $LD_MAF_GRPS | cut -d_ -f1`
 MAF_GRPS=`echo $LD_MAF_GRPS | cut -d_ -f2`
@@ -233,7 +241,7 @@ then
 fi
 
 #########################################################
-## Filter relationships above X
+## Filter GRM relationships above Threshold
 if (( $(echo "$GRM_CUTOFF > 0" | bc -l) )) ; then
 ${GCTA} \
 --grm ${OUT_DIR}/1_GRM/1-GRM_FULL \
@@ -241,9 +249,9 @@ ${GCTA} \
 --grm-cutoff ${GRM_CUTOFF} \
 --make-grm \
 --out ${OUT_DIR}/1_GRM/1-GRM_CUT
-USE_GRM=${OUT_DIR}/1_GRM/1-GRM_CUT
-else
-USE_GRM=${OUT_DIR}/1_GRM/1-GRM_FULL
+# USE_GRM=${OUT_DIR}/1_GRM/1-GRM_CUT
+# else
+# USE_GRM=${OUT_DIR}/1_GRM/1-GRM_FULL
 fi
 
 ## Done
@@ -262,6 +270,11 @@ echo `date` "6 - Estimate Heritability" >> ${UPDATE_FILE}
 mkdir ${OUT_DIR}/Phenos
 mkdir ${OUT_DIR}/3_REML/
 
+## Remove Commands File (if it already exists)
+if [ -e ${OUT_DIR}/3_REML/COMMANDS.run ]; then
+rm ${OUT_DIR}/3_REML/COMMANDS.run
+fi
+
 ## Specify Field Separater
 IFSo=$IFS
 IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
@@ -271,6 +284,7 @@ IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
 # line=`head -1 ${PHENO_NAME_LIST_PATH}`
 # line=`head -10 ${PHENO_NAME_LIST_PATH} | tail -1`
 for line in `cat ${PHENO_NAME_LIST_PATH}` ; do
+echo Next Line: $line
 # for line in `head -10 ${PHENO_NAME_LIST_PATH}` ; do
 
 #####################################################
@@ -344,8 +358,7 @@ IFS=$' \t\n' # Reset
 ## Run Command from List
 chmod 777 ${OUT_DIR}/3_REML/COMMANDS.run
 ${OUT_DIR}/3_REML/COMMANDS.run
-for file in `ls 3_REML/*MNa*hsq`; do echo $file ; grep "V(G)/" $file ; grep "Pval" $file ; done
-# rm 3_REML/3*
+# for file in `ls 3_REML/*MNa*hsq`; do echo $file ; grep "V(G)/" $file ; grep "Pval" $file ; done
 
 ## Done
 echo `date` "6 - Estimate Heritability - DONE" >> ${UPDATE_FILE}
@@ -370,16 +383,16 @@ echo `date` "7 - Make Plots - DONE" >> ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
 ##########################################################################
-## 7 ## Permute for P-Values #############################################
+## 8 ## Permute for P-Values #############################################
 ##########################################################################
-if [ "$START_STEP" -le 7 ]; then
-echo \### 7 - `date` \###
+if [ "$START_STEP" -le 8 ]; then
+echo \### 8 - `date` \###
 echo \### Permute \###
-echo `date` "7 - Permute" >> ${UPDATE_FILE}
+echo `date` "8 - Permute" >> ${UPDATE_FILE}
 
 mkdir ${OUT_DIR}/4-PERM/
 ## Specify Number of Permutations
-N_PERM=100
+N_PERM=1000
 
 IFSo=$IFS
 IFS=$'\n' # Makes it so each line is read whole (not separated by tabs)
@@ -409,7 +422,8 @@ else
 PCS=`seq 1 ${PC_COUNT}`
 PCS_COMMAND=`echo "PC"${PCS} | sed 's/ /QQQPC/g'`
 COVS_COMMAND=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/,/g'`
-COVS_FILENAME=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/_/g'`
+# COVS_FILENAME=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/_/g'`
+COVS_FILENAME=`echo "${COVS}QQQPC${PC_COUNT}" | sed 's/QQQ/_/g'`
 fi # Close (if PCs)
 
 ## Incorporate Country/Site of Study as Binary Covariate (if Included)
@@ -418,14 +432,14 @@ COVS_COMMAND=`echo $COVS_COMMAND | sed 's/COUN/CN_ARG,CN_AUS,CN_COL,CN_HUN,CN_LT
 fi # Close (if COUN)
 
 ## Compile Covariates into Correct Format
-NEW_COV_PATH=${OUT_DIR}/Phenos/${COVS_FILENAME}_FULL.txt
+NEW_COV_PATH=${OUT_DIR}/Phenos/Cov_${COVS_FILENAME}_FULL.txt
 echo ${NEW_COV_PATH}
 
 fi # Close (if USE_COVARS)
 
 #######################################
 ## Permute Phenotype/Covariate Files ##
-Rscript ${PERMUTE} ${NEW_PHENO_PATH} ${NEW_COV_PATH} ${N_PERM}
+Rscript ${PERMUTE} ${NEW_PHENO_PATH} ${NEW_COV_PATH} ${N_PERM} ${COVS_COMMAND}
 
 ## Loop Through Z Permutations
 for perm in `seq ${N_PERM}`; do
@@ -437,7 +451,7 @@ EST_OUT=${OUT_DIR}/4-PERM/${pheno}_${perm}
 # If Covariates are Specified
 if [[ $USE_COVARS == TRUE && $COVS != "" ]]; then
 ${GCTA} \
---grm ${OUT_DIR}/1_GRM/1-GRM_CUT \
+--grm ${USE_GRM} \
 --pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
 --qcovar ${NEW_COV_PATH%%txt}${perm}.txt \
 --reml \
@@ -447,7 +461,7 @@ ${GCTA} \
 --out ${EST_OUT}
 else # If Covariates are NOT Specified
 ${GCTA} \
---grm ${OUT_DIR}/1_GRM/1-GRM_CUT \
+--grm ${USE_GRM} \
 --pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
 --reml \
 --reml-maxit 1000 \
@@ -467,22 +481,22 @@ IFS=$IFSo # Reset
 
 
 ## Done
-echo `date` "7 - Permute - DONE" >> ${UPDATE_FILE}
+echo `date` "8 - Permute - DONE" >> ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
 ##########################################################################
-## 8 ## Plot Permuted Results ############################################
+## 9 ## Plot Permuted Results ############################################
 ##########################################################################
-if [ "$START_STEP" -le 8 ]; then
-echo \### 8 - `date` \###
+if [ "$START_STEP" -le 9 ]; then
+echo \### 9 - `date` \###
 echo \### Plot Permuted Results \###
-echo `date` "8 - Plot Permuted Results" >> ${UPDATE_FILE}
+echo `date` "9 - Plot Permuted Results" >> ${UPDATE_FILE}
 
 ## Plot Permuted Results
 Rscript ${PLOT_PERMUTED} ${PHENO_NAME_LIST_PATH} ${OUT_DIR} ${N_PERM}
 
 ## Done
-echo `date` "8 - Plot Permuted Results - DONE" >> ${UPDATE_FILE}
+echo `date` "9 - Plot Permuted Results - DONE" >> ${UPDATE_FILE}
 printf "V\nV\nV\nV\nV\nV\nV\nV\n"
 fi
 ##########################################################################

@@ -13,11 +13,16 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- c( "/projects/janssen/Heritability/Manuscript_Phenos_Covs.txt", "/projects/janssen/Heritability/20150310_ALL2b_Manuscript_Phenos_Covs", "TEMP" )
 # LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Single.SEL.txt", "/projects/janssen/Heritability/20150520_Single_SEL_MAF1_ALL_Manu_PhenoCovs_Single.SEL", "Full Cohort (MAF>1, SNP+Indel)" )
 # LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.SEL.txt", "/projects/janssen/Heritability/20150520_Derived_SEL_MAF1_ALL_Manu_PhenoCovs_Derived.SEL", "Full Cohort (MAF>1, SNP+Indel)" )
+# LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.txt", "/projects/janssen/Heritability/20160125_GCTA_Derived_MAF1_SNP_Manu_PhenoCovs_Derived", "Full Cohort (MAF>1, SNP)" )
 Pheno_List <- LINE[1]
 PathToData <- LINE[2]
 Cohort_Name <- LINE[3]
 
-print( "Running: Plot_Estimates.R" )
+## Print Inputs
+print( "!!Running: Plot_Estimates.R" )
+print(paste( "Pheno List:", Pheno_List ))
+print(paste( "Path:", PathToData ))
+print(paste( "Cohort Tag:", Cohort_Name ))
 
 ###################################################
 ## LOAD DATA ######################################
@@ -71,7 +76,7 @@ MOD <- array( , c(length(PHENOS),6) ) ; colnames(MOD) <- c("logL","logL0","LRT",
 rownames(VAR) <- rownames(SE) <- rownames(MOD) <- gsub(".txt","",PHENOS)
 for ( p in 1:length(PHENOS) ) {
 	pheno <- PHENOS[p]
-	file_name <- paste(PathToData,"/3-REML_",pheno,".hsq",sep="")
+	file_name <- paste(PathToData,"/3_REML/3-REML_",pheno,".hsq",sep="")
 	TEMP_TAB <- read.table( file_name, sep="\t",header=T,fill=T, colClasses=rep("character",3) )
 	EST[[p]] <- TEMP_TAB
 	## Pull out Variance Estimates for various parameters

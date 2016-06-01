@@ -13,11 +13,17 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.SEL.txt", "/projects/janssen/Heritability/20150506_Derived_MAF1_ALL_Manu_PhenoCovs_Derived.SEL", "1000" )
 # LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.SEL.txt", "/projects/janssen/Heritability/20150520_Derived_SEL_MAF1_ALL_Manu_PhenoCovs_Derived.SEL", "1000" )
 # LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Single.SEL.txt", "/projects/janssen/Heritability/20150520_Single_SEL_MAF1_ALL_Manu_PhenoCovs_Single.SEL", "1000" )
+# LINE <- c( "/projects/janssen/Heritability/PhenoCov_Lists/Manu_PhenoCovs_Single.txt", "/projects/janssen/Heritability/20160510_GCTA_Single_MAF1_SNP_Manu_PhenoCovs_Single", "100" )
 Pheno_List <- LINE[1]
 PathToData <- LINE[2]
 Num_Perms <- as.numeric( LINE[3] )
 
-print( "Running: Plot_Estimates.R" )
+## Print Inputs
+print( "!!Running: Plot_Permuted.R" )
+print(paste( "Pheno List:", Pheno_List ))
+print(paste( "Path:", PathToData ))
+print(paste( Num_Perms, "Permutations" ))
+
 ###################################################
 ## LOAD DATA ######################################
 ###################################################
@@ -26,46 +32,37 @@ print( "Running: Plot_Estimates.R" )
 print( "Loading Phenotype List")
 PHENOS.l <- read.table( Pheno_List, header=F, fill=T )
 PHENOS <- as.character( PHENOS.l[,1] )
-# PHENOS <- as.character( PHENOS.l[ which(PHENOS.l[,2]!=""),1] )
-# TEMP.PHENO.list <- as.character( read.table( "TEMP.PHENO.list", header=F, fill=T )[,1] )
-# TEMP.PHENO.list <- gsub("_1.hsq","",TEMP.PHENO.list)
-# PHENOS <- PHENOS[ -grep("MNw",PHENOS) ]
-# PHENOS <- PHENOS[ -grep("28",PHENOS) ]
-# PHENOS.post <- PHENOS[ grep("POST",PHENOS) ]
-# PHENOS.del <- PHENOS[ grep("DEL",PHENOS) ]
 
-## ***************** OPTIONAL: SINGLE ************************* ##
+if ( grepl("Single",PathToData) ) {
+	## Change Names/Order for SINGLE Timepoint Estimates
+	# PHENOS.spl <- t(sapply(strsplit(PHENOS,"_"),"[",1:3))
+	# ReOrder <- order(PHENOS.spl[,3],PHENOS.spl[,2])
+	# PHENOS[ ReOrder ]
+	ReOrder <- seq(1,28,7) + rep( 1:7-1,each=4 )
+	PHENOS <- PHENOS[ c(ReOrder,29:length(PHENOS)) ]
 
-## Change Names/Order for SINGLE Timepoint Estimates
-ReOrder <- seq(1,28,7) + rep( 1:7-1,rep(4,7) )
-PHENOS <- PHENOS[ c(ReOrder,29:length(PHENOS)) ]
-
-## To Plot only Subset of Phenotypes
-#  # "POST" treatment Measurements
-# PHENOS <- PHENOS[ grep("POST",PHENOS) ]
- # "DEL" Measurements
-PHENOS <- PHENOS[ grep("DEL",PHENOS) ]
-
-## ***************** OPTIONAL: DERIVED ************************* ##
-
-# ## To Plot only Subset of Phenotypes
-#  # Remove "28"JC Phenos
-# PHENOS <- PHENOS[ grep("28",PHENOS, invert=T) ]
-#  # Extract only "DEL" Phenos
-# PHENOS <- PHENOS[ grep("DEL",PHENOS) ]
-#  # Extract only "MNa" Phenos
-# PHENOS <- PHENOS[ grep("MNa",PHENOS) ]
-#  # Extract non-"MNa" Phenos
-# PHENOS <- PHENOS[ grep("MNa",PHENOS, invert=T) ]
-
-
-
+	## To Plot only Subset of Phenotypes
+	 # Remove "28"JC Phenos
+	PHENOS <- PHENOS[ grep("28$",PHENOS, invert=T) ]
+	 # Extract only "DEL" Phenos
+	PHENOS <- PHENOS[ grep("DEL",PHENOS) ]
+}else{
+	## To Plot only Subset of Phenotypes
+	 # Remove "28"JC Phenos
+	PHENOS <- PHENOS[ grep("28$",PHENOS, invert=T) ]
+	 # Extract only "DEL" Phenos
+	PHENOS <- PHENOS[ grep("DEL",PHENOS) ]
+	 # Extract only "MNa" Phenos
+	# PHENOS <- PHENOS[ grep("MNa",PHENOS) ]
+	 # Extract non-"MNa" Phenos
+	# PHENOS <- PHENOS[ grep("MNa",PHENOS, invert=T) ]
+}
+	
 ## Load Heritability Estimates for Phenotypes
 print( "Loading/Compiling GCTA Results" )
 EST <- VAR <- SE <- MOD <- list()
 for ( p in 1:length(PHENOS) ) {
 	pheno <- PHENOS[p]
-
 	EST[[pheno]] <- list()
 	VAR[[pheno]] <- array( , c(Num_Perms+1,4) ) ; colnames(VAR[[pheno]]) <- c("Vg","Ve","Vp","VgVp")
 	SE[[pheno]] <- array( , c(Num_Perms+1,4) ) ; colnames(SE[[pheno]]) <- c("Vg","Ve","Vp","VgVp")
@@ -82,7 +79,7 @@ for ( p in 1:length(PHENOS) ) {
 		MOD[[pheno]][i,] <- as.numeric( TEMP_TAB[5:10,"Variance"] )
 	}
 	# Input True Results
-	file_name <- paste(PathToData,"/3-REML_",pheno,".hsq",sep="")
+	file_name <- paste(PathToData,"/3_REML/3-REML_",pheno,".hsq",sep="")
 	TEMP_TAB <- read.table( file_name, sep="\t",header=T,fill=T, colClasses=rep("character",3) )
 	EST[[p]] <- TEMP_TAB
 	## Pull out Variance Estimates for various parameters
@@ -122,54 +119,73 @@ COLS[ grep("rTJC",names(COMPILE$VAR)) ] <- "dodgerblue1"
 COLS[ grep("lCRP",names(COMPILE$VAR)) ] <- "chartreuse1"
 LTYS <- rep( 2, length(COMPILE$VAR) )
 LTYS[ grep("DEL",rownames(COMPILE$VAR)) ] <- 1
-# PCHS <- rep( "o", length(COMPILE$VAR) )
-# PCHS[ grep("MNa",names(COMPILE$VAR)) ] <- "A"
-# PCHS[ grep("Bwk",names(COMPILE$VAR)) ] <- "B"
-# PCHS[ grep("PRC",names(COMPILE$VAR)) ] <- "C"
-# PCHS[ grep("MNcd",names(COMPILE$VAR)) ] <- "D"
-# PCHS[ grep("VARdr",names(COMPILE$VAR)) ] <- "E"
-# PCHS[ grep("VARwk",names(COMPILE$VAR)) ] <- "F"
-# PCHS[ grep("POST",names(COMPILE$VAR)) ] <- "G"
-PCHS <- rep( "o", length(COMPILE$VAR) )
-PCHS[ grep("WAG4",names(COMPILE$VAR)) ] <- "A"
-PCHS[ grep("WAG12",names(COMPILE$VAR)) ] <- "B"
-PCHS[ grep("WAG20",names(COMPILE$VAR)) ] <- "C"
-PCHS[ grep("WAG28",names(COMPILE$VAR)) ] <- "D"
-PCHS[ grep("FL",names(COMPILE$VAR)) ] <- "E"
-
+if ( grepl("Single",PathToData) ) {
+	PCHS <- rep( "o", length(COMPILE$VAR) )
+	PCHS[ grep("WAG4",names(COMPILE$VAR)) ] <- "A"
+	PCHS[ grep("WAG12",names(COMPILE$VAR)) ] <- "B"
+	PCHS[ grep("WAG20",names(COMPILE$VAR)) ] <- "C"
+	PCHS[ grep("WAG28",names(COMPILE$VAR)) ] <- "D"
+	PCHS[ grep("FL",names(COMPILE$VAR)) ] <- "E"
+}else{
+	PCHS <- rep( "o", length(COMPILE$VAR) )
+	PCHS[ grep("MNa",names(COMPILE$VAR)) ] <- "A"
+	PCHS[ grep("Bwk",names(COMPILE$VAR)) ] <- "B"
+	PCHS[ grep("PRC",names(COMPILE$VAR)) ] <- "C"
+	PCHS[ grep("MNcd",names(COMPILE$VAR)) ] <- "D"
+	PCHS[ grep("VARdr",names(COMPILE$VAR)) ] <- "E"
+	PCHS[ grep("VARwk",names(COMPILE$VAR)) ] <- "F"
+	PCHS[ grep("POST",names(COMPILE$VAR)) ] <- "G"
+}
 
 
 # load( "/Users/kstandis/Data/Burn/Results/20150423_GCTA_Perm_Test.Rdata" )
 # Num_Perms <- nrow( COMPILE$MOD[[1]] ) - 1
 
 ## Plot LRT Stat Distribution vs Actual Results
-P.perm.comp <- numeric( length(COMPILE$MOD) )
-names(P.perm.comp) <- names(COMPILE$MOD)
-derive <- "" ; count <- 0
-for ( p in 1:length(COMPILE$MOD) ) {
-	pheno <- names(COMPILE$MOD)[p]
-	derive.old <- derive
-	derive <- paste(strsplit(names(COMPILE$MOD)[p],"_")[[1]][1:2],collapse="_")
-	if ( derive!=derive.old ) {
-		if ( p > 1 ) { dev.off() }
-		jpeg( paste(PathToData,"/Perm_LRT_Distr_",derive,".jpeg",sep=""), width=1600,height=1600, pointsize=30 )
-		par(mfrow=c(3,3))
-		count <- 1
-	}
-	# Plot LRT Distribution
+PHENOS.2 <- names(COMPILE$MOD)
+PHENOS.2.spl <- t(sapply(strsplit(PHENOS.2,"_"),"[",1:3))
+P.perm.comp <- numeric( length(PHENOS.2) )
+names(P.perm.comp) <- PHENOS.2
+for ( p in 1:length(PHENOS.2) ) {
+	pheno <- PHENOS.2[p]
+	jpeg( paste(PathToData,"/Perm_LRT_Distr_",pheno,".jpeg",sep=""), width=2000,height=1000, pointsize=30 )
+	par(mfrow=c(1,2))
+	# derive.old <- derive
+	# derive <- paste(strsplit(names(COMPILE$MOD)[p],"_")[[1]][1:2],collapse="_")
+	# if ( derive!=derive.old ) {
+	# 	if ( p > 1 ) { dev.off() }
+	# 	jpeg( paste(PathToData,"/Perm_LRT_Distr_",derive,".jpeg",sep=""), width=1600,height=1600, pointsize=30 )
+	# 	par(mfrow=c(3,3))
+	# 	count <- 1
+	# }
+
+	## Plot LRT Distribution
 	XLIM <- range( COMPILE$MOD[[p]][,"LRT"] )
+	YLIM <- c( 0,Num_Perms)
 	BRKS <- seq( 0,XLIM[2]+.5,.5 )
-	hist( COMPILE$MOD[[p]][-(Num_Perms+1),"LRT"], xlim=XLIM,main=paste("LRT Stat:",pheno),xlab="LRT Stat",breaks=BRKS,col=COLS[p] )
-	arrows( COMPILE$MOD[[p]]["True","LRT"],.2*Num_Perms,COMPILE$MOD[[p]]["True","LRT"],0, col=gsub("1","4",COLS[p]),lwd=3 )
+	hist( COMPILE$MOD[[p]][-(Num_Perms+1),"LRT"], xlim=XLIM,ylim=YLIM,main=paste("LRT Stat:",pheno),xlab="LRT Stat",breaks=BRKS,col=COLS[p] )
+	arrows( COMPILE$MOD[[p]]["True","LRT"],.2*Num_Perms,COMPILE$MOD[[p]]["True","LRT"],0, col=gsub("1","4",COLS[p]),lwd=6 )
 	# Print P-Values
 	P.perm <- (1+length(which(COMPILE$MOD[[p]][1:Num_Perms,"LRT"]>COMPILE$MOD[[p]]["True","LRT"]))) / (1+Num_Perms)
 	P.perm.comp[p] <- P.perm
 	P.dat <- COMPILE$MOD[[p]]["True","Pval"]
-	text( quantile(XLIM,.2),.8*Num_Perms, pos=4,label=paste("P.perm =",formatC(P.perm,digits=2,format="e")) )
-	text( quantile(XLIM,.2),.75*Num_Perms, pos=4,label=paste("P.dat =",formatC(P.dat,digits=2,format="e")) )
-	count <- count + 1
-	# if ( count>9 ) { dev.off() }
-} ; dev.off()
+	text( quantile(XLIM,.2),.95*Num_Perms, pos=4,label=paste("P.perm =",formatC(P.perm,digits=2,format="e")) )
+	text( quantile(XLIM,.2),.9*Num_Perms, pos=4,label=paste("P.dat =",formatC(P.dat,digits=2,format="e")) )
+
+	## Plot Heritability Estimate Distribution
+	XLIM <- c(0,1)
+	YLIM <- c( 0,Num_Perms)
+	BRKS <- seq( 0,1,.05 )
+	hist( COMPILE$VAR[[p]][-(Num_Perms+1),"VgVp"], xlim=XLIM,ylim=YLIM,main=paste("VgVp Stat:",pheno),xlab="VgVp Stat",breaks=BRKS,col=COLS[p] )
+	arrows( COMPILE$VAR[[p]]["True","VgVp"],.2*Num_Perms,COMPILE$VAR[[p]]["True","VgVp"],0, col=gsub("1","4",COLS[p]),lwd=6 )
+	# Print P-Values
+	P.perm <- (1+length(which(COMPILE$VAR[[p]][1:Num_Perms,"VgVp"]>COMPILE$VAR[[p]]["True","VgVp"]))) / (1+Num_Perms)
+	P.perm.comp[p] <- P.perm
+	P.dat <- COMPILE$MOD[[p]]["True","Pval"]
+	text( quantile(XLIM,.2),.95*Num_Perms, pos=4,label=paste("P.perm =",formatC(P.perm,digits=2,format="e")) )
+	text( quantile(XLIM,.2),.9*Num_Perms, pos=4,label=paste("P.dat =",formatC(P.dat,digits=2,format="e")) )
+	dev.off()
+}
 
 ## Plot Permuted vs Actual P-Values
 P.dat.comp <- unlist(lapply( COMPILE$MOD, function(x) x["True","Pval"] ))
@@ -178,16 +194,15 @@ PCHS.leg <- PCHS.leg[ which(!duplicated(PCHS.leg$PCHS)), ]
 COLS.leg <- data.frame( LABS=unlist(lapply(strsplit(names(P.dat.comp),"_"),function(x) x[3])), COLS )
 COLS.leg <- COLS.leg[ which(!duplicated(COLS.leg$COLS)), ]
 LIM <- c(0, max(-log10( c(P.dat.comp,P.perm.comp) )) )
-jpeg( paste(PathToData,"/Perm_Pvals.jpeg",sep=""), width=1600,height=1600, pointsize=30 )
+jpeg( paste(PathToData,"/Perm_Pvals.jpeg",sep=""), width=1200,height=1200, pointsize=30 )
 plot( 0,0, type="n", xlim=LIM,ylim=LIM, xlab="GCTA: -log10(p)",ylab="Permuted: -log10(p)", main="Permuted vs GCTA P-Values" )
 abline( h=seq(0,LIM[2]+1,1),lty=2,col="grey50") ; abline( v=seq(0,LIM[2]+1,1),lty=2,col="grey50")
-abline( 0,1, lty=1,col="black",lwd=2 )
-abline( h=-log10(.05), lty=2,col="magenta2",lwd=3 )
-abline( v=-log10(.05), lty=2,col="magenta2",lwd=3 )
-abline( h=-log10(1/(1+Num_Perms)), lty=2,col="chocolate2",lwd=3 )
+abline( h=-log10(.05),v=-log10(.05), lty=2,col="slateblue2",lwd=6 )
+abline( h=-log10(1/(1+Num_Perms)), lty=2,col="chocolate2",lwd=6 )
+abline( 0,1, lty=1,col="black",lwd=8 )
 points( -log10(P.dat.comp), -log10(P.perm.comp), col=COLS,pch=PCHS,cex=2 )
 legend( "topleft", legend=PCHS.leg$LABS[order(PCHS.leg$PCHS)], pch=as.character(PCHS.leg$PCHS[order(PCHS.leg$PCHS)]), col="black", cex=1.5 )
-legend( "bottomright", legend=COLS.leg$LABS[order(COLS.leg$COLS)], col=as.character(COLS.leg$COLS[order(COLS.leg$COLS)]), pch=20, cex=1.5, ncol=2 )
+legend( "bottomright", title="Phenotype",legend=COLS.leg$LABS[order(COLS.leg$COLS)], col=as.character(COLS.leg$COLS[order(COLS.leg$COLS)]), pch=20, cex=1.5, ncol=2 )
 dev.off()
 
 # FRAME <- data.frame( GCTA=P.dat.comp, PERM=P.perm.comp, PCHS, COLS )

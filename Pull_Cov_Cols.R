@@ -11,6 +11,7 @@ PathToCov <- LINE[3]
 PathToNewCov <- LINE[4]
 
 ## Print Inputs
+print( "!!Running: Pull_Cov_Cols.R" )
 print(paste( "Covar_List:", Covar_List ))
 print(paste( "PathToVec:", PathToVec ))
 print(paste( "PathToCov:", PathToCov ))
@@ -18,34 +19,34 @@ print(paste( "PathToNewCov:", PathToNewCov ))
 
 ## Load Covariate File
 COV <- read.table(PathToCov,sep="\t",header=T)
-print(paste( "dim(CovarTable):",dim(COV) ))
+# print(paste( "dim(CovarTable):",dim(COV) ))
 
 ## Use PCs?
 if ( any(grepl("PC",Covar_List)) ) {
 	USE_PCS <- 1
 }else{ USE_PCS <- 0 }
-print(paste( "USE_PCS:",USE_PCS ))
+# print(paste( "USE_PCS:",USE_PCS ))
 
 ## Specify/Update Covariate List
 if ( grepl(",",Covar_List) ) {
 	Covar_List.2 <- strsplit( Covar_List, "," )[[1]]
 }else{ Covar_List.2 <- Covar_List }
-print( "Covar_List.2:" )
-print( Covar_List.2 )
+# print( "Covar_List.2:" )
+# print( Covar_List.2 )
 
 ## Load PCs
 if ( USE_PCS==1 ) {
 	# Get PC Count
 	PC_Count <- length( grep("PC",Covar_List.2) )
-	print(paste( "PC_Count:",PC_Count ))
+	# print(paste( "PC_Count:",PC_Count ))
 	# Get rid of "PC" in Covar List if it's included
 	Covar_List.2 <- Covar_List.2[-grep("PC",Covar_List.2)]
 	print( "Covar_List.2:" )
 	print( Covar_List.2 )
 	# Load EigenVectors
 	VEC <- read.table(PathToVec,header=F)
-	print( "dim(EigenVectors):" )
-	print( dim(VEC) )
+	# print( "dim(EigenVectors):" )
+	# print( dim(VEC) )
 }
 
 ## Check for Remaining Covariates
@@ -63,7 +64,7 @@ if ( Covar_List.2[1]=="" ) {
 		OUT <- COVS.2
 	}
 }
-print(paste( "dim(OUT):",dim(OUT) ))
+# print(paste( "dim(OUT):",dim(OUT) ))
 
 ## Write Table
 write.table(OUT[,c(1,1:ncol(OUT))],PathToNewCov,sep="\t",row.names=F,col.names=F,quote=F)
