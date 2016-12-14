@@ -5,6 +5,7 @@
 LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- c( paste("/projects/janssen/Heritability/20150316_Derived_MAF1_ALL_Manu_PhenoCovs_Derived/",c("PRE_MNw_DAS_FULL.txt","DEL_MNw_DAS_FULL.txt"),sep=""), 10 )
 # LINE <- c( paste("/projects/janssen/Heritability/20160510_GCTA_Sing_MAF1_SNP_PC4_20160510_Single_Phenos/Phenos/",c("DEL_WAG20_DAS_FULL.txt","Cov_Ibl_DAS_PC4_FULL.txt"),sep=""), 10, "Ibl_DAS,PC1,PC2,PC3,PC4" )
+# LINE <- c( paste("/projects/janssen/Heritability/20160517_GCTA_MAF1_SNP_PC10_20160510_Derived_Phenos/Phenos/",c("DEL_MNcd_DAS_FULL.txt","Cov__PC10_FULL.txt"),sep=""), 10, ",PC1,PC2,PC3,PC4,PC5,PC6,PC7,PC8,PC9,PC10" )
 Pheno_Table <- LINE[1]
 Cov_Table <- LINE[2]
 Perm_Number <- LINE[3]
@@ -24,6 +25,7 @@ print(paste( "dim(Pheno_Table):",dim(PHENO) ))
 if ( file.exists( Cov_Table ) ) { 
 	COV <- read.table(Cov_Table,sep="\t",header=F)
 	Covs_List.spl <- strsplit(Covs_List,",")[[1]]
+	Covs_List.spl <- setdiff( Covs_List.spl, "" )
 	if ( any(grepl("^PC",Covs_List.spl)) ) {
 		which_PCs <- 2 + grep("^PC",Covs_List.spl)
 	}
@@ -67,6 +69,6 @@ for ( p in 1:Perm_Number ) {
 	}
 }
 
-######### END OF DOC ###########
+######## END OF DOC ###########
 
 

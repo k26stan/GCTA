@@ -14,6 +14,7 @@ LINE <- commandArgs(trailingOnly = TRUE)
 # LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Derived.SEL.txt", "/projects/janssen/Heritability/20150520_Derived_SEL_MAF1_ALL_Manu_PhenoCovs_Derived.SEL", "1000" )
 # LINE <- c( "/projects/janssen/Heritability/Manu_PhenoCovs_Single.SEL.txt", "/projects/janssen/Heritability/20150520_Single_SEL_MAF1_ALL_Manu_PhenoCovs_Single.SEL", "1000" )
 # LINE <- c( "/projects/janssen/Heritability/PhenoCov_Lists/Manu_PhenoCovs_Single.txt", "/projects/janssen/Heritability/20160510_GCTA_Single_MAF1_SNP_Manu_PhenoCovs_Single", "100" )
+# LINE <- c( "/projects/janssen/Heritability/PhenoCov_Lists/20160510_Derived_Phenos.txt", "/projects/janssen/Heritability/20160621_GCTA_MAF1_SNP_PC4_20160510_Derived_Phenos",1000 )
 Pheno_List <- LINE[1]
 PathToData <- LINE[2]
 Num_Perms <- as.numeric( LINE[3] )
@@ -180,7 +181,7 @@ for ( p in 1:length(PHENOS.2) ) {
 	arrows( COMPILE$VAR[[p]]["True","VgVp"],.2*Num_Perms,COMPILE$VAR[[p]]["True","VgVp"],0, col=gsub("1","4",COLS[p]),lwd=6 )
 	# Print P-Values
 	P.perm <- (1+length(which(COMPILE$VAR[[p]][1:Num_Perms,"VgVp"]>COMPILE$VAR[[p]]["True","VgVp"]))) / (1+Num_Perms)
-	P.perm.comp[p] <- P.perm
+	# P.perm.comp[p] <- P.perm
 	P.dat <- COMPILE$MOD[[p]]["True","Pval"]
 	text( quantile(XLIM,.2),.95*Num_Perms, pos=4,label=paste("P.perm =",formatC(P.perm,digits=2,format="e")) )
 	text( quantile(XLIM,.2),.9*Num_Perms, pos=4,label=paste("P.dat =",formatC(P.dat,digits=2,format="e")) )

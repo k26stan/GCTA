@@ -61,7 +61,7 @@ if ( Covar_List.2[1]=="" ) {
 		VEC.2 <- VEC[,c(1,3:(PC_Count+2))]
 		OUT <- merge(x=COV.2,y=VEC.2,by.x="IID",by.y="V1")
 	}else{
-		OUT <- COVS.2
+		OUT <- COV.2
 	}
 }
 # print(paste( "dim(OUT):",dim(OUT) ))

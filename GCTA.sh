@@ -403,77 +403,77 @@ for line in `cat ${PHENO_NAME_LIST_PATH}`; do
 # for line in `cat ${PHENO_NAME_LIST_PATH} | grep "PRC\|Bwk\|VARdr\|VARwk"`; do
 # for line in `cat ${PHENO_NAME_LIST_PATH} | grep DEL | grep MNa`; do
 
-# Determine which Phenotype to Use
-pheno=`echo ${line} | awk '{print $1}'`
+	# Determine which Phenotype to Use
+	pheno=`echo ${line} | awk '{print $1}'`
 
-## Pull out Phenotype to File
-NEW_PHENO_PATH=${OUT_DIR}/Phenos/${pheno}_FULL.txt
+	## Pull out Phenotype to File
+	NEW_PHENO_PATH=${OUT_DIR}/Phenos/${pheno}_FULL.txt
 
-## If Covariates are being Used
-if [[ $USE_COVARS == TRUE ]]; then
-# Determine Which Covariates for this Phenotype
-# (from PHENO_NAME_LIST_FILE)
-COVS=`echo ${line} | cut -d$'\t' -f2- | sed 's/\t/QQQ/g'`
-# If PC's specified
-if [ $PC_COUNT -eq 0 ]; then
-COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
-COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
-else
-PCS=`seq 1 ${PC_COUNT}`
-PCS_COMMAND=`echo "PC"${PCS} | sed 's/ /QQQPC/g'`
-COVS_COMMAND=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/,/g'`
-# COVS_FILENAME=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/_/g'`
-COVS_FILENAME=`echo "${COVS}QQQPC${PC_COUNT}" | sed 's/QQQ/_/g'`
-fi # Close (if PCs)
+	## If Covariates are being Used
+	if [[ $USE_COVARS == TRUE ]]; then
+	# Determine Which Covariates for this Phenotype
+	# (from PHENO_NAME_LIST_FILE)
+	COVS=`echo ${line} | cut -d$'\t' -f2- | sed 's/\t/QQQ/g'`
+	# If PC's specified
+	if [ $PC_COUNT -eq 0 ]; then
+	COVS_COMMAND=`echo "${COVS}" | sed 's/QQQ/,/g'`
+	COVS_FILENAME=`echo "${COVS}" | sed 's/QQQ/_/g'`
+	else
+	PCS=`seq 1 ${PC_COUNT}`
+	PCS_COMMAND=`echo "PC"${PCS} | sed 's/ /QQQPC/g'`
+	COVS_COMMAND=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/,/g'`
+	# COVS_FILENAME=`echo "${COVS}QQQ${PCS_COMMAND}" | sed 's/QQQ/_/g'`
+	COVS_FILENAME=`echo "${COVS}QQQPC${PC_COUNT}" | sed 's/QQQ/_/g'`
+	fi # Close (if PCs)
 
-## Incorporate Country/Site of Study as Binary Covariate (if Included)
-if [[ $COVS == *COUN* ]]; then
-COVS_COMMAND=`echo $COVS_COMMAND | sed 's/COUN/CN_ARG,CN_AUS,CN_COL,CN_HUN,CN_LTU,CN_MEX,CN_MYS,CN_NZL,CN_POL,CN_RUS,CN_UKR/g'`
-fi # Close (if COUN)
+	## Incorporate Country/Site of Study as Binary Covariate (if Included)
+	if [[ $COVS == *COUN* ]]; then
+	COVS_COMMAND=`echo $COVS_COMMAND | sed 's/COUN/CN_ARG,CN_AUS,CN_COL,CN_HUN,CN_LTU,CN_MEX,CN_MYS,CN_NZL,CN_POL,CN_RUS,CN_UKR/g'`
+	fi # Close (if COUN)
 
-## Compile Covariates into Correct Format
-NEW_COV_PATH=${OUT_DIR}/Phenos/Cov_${COVS_FILENAME}_FULL.txt
-echo ${NEW_COV_PATH}
+	## Compile Covariates into Correct Format
+	NEW_COV_PATH=${OUT_DIR}/Phenos/Cov_${COVS_FILENAME}_FULL.txt
+	echo ${NEW_COV_PATH}
 
-fi # Close (if USE_COVARS)
+	fi # Close (if USE_COVARS)
 
-#######################################
-## Permute Phenotype/Covariate Files ##
-Rscript ${PERMUTE} ${NEW_PHENO_PATH} ${NEW_COV_PATH} ${N_PERM} ${COVS_COMMAND}
+	#######################################
+	## Permute Phenotype/Covariate Files ##
+	Rscript ${PERMUTE} ${NEW_PHENO_PATH} ${NEW_COV_PATH} ${N_PERM} ${COVS_COMMAND}
 
-## Loop Through Z Permutations
-for perm in `seq ${N_PERM}`; do
+	## Loop Through Z Permutations
+	for perm in `seq ${N_PERM}`; do
 
-## Set up Path for GCTA Output
-EST_OUT=${OUT_DIR}/4-PERM/${pheno}_${perm}
+		## Set up Path for GCTA Output
+		EST_OUT=${OUT_DIR}/4-PERM/${pheno}_${perm}
 
-## Run GCTA to get Heritability Estimates
-# If Covariates are Specified
-if [[ $USE_COVARS == TRUE && $COVS != "" ]]; then
-${GCTA} \
---grm ${USE_GRM} \
---pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
---qcovar ${NEW_COV_PATH%%txt}${perm}.txt \
---reml \
---reml-maxit 1000 \
---reml-est-fix \
---reml-pred-rand \
---out ${EST_OUT}
-else # If Covariates are NOT Specified
-${GCTA} \
---grm ${USE_GRM} \
---pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
---reml \
---reml-maxit 1000 \
---reml-est-fix \
---reml-pred-rand \
---out ${EST_OUT}
-fi
+		## Run GCTA to get Heritability Estimates
+		# If Covariates are Specified
+		if [[ $USE_COVARS == TRUE && $COVS != "" ]]; then
+		${GCTA} \
+		--grm ${USE_GRM} \
+		--pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
+		--qcovar ${NEW_COV_PATH%%txt}${perm}.txt \
+		--reml \
+		--reml-maxit 1000 \
+		--reml-est-fix \
+		--reml-pred-rand \
+		--out ${EST_OUT}
+		else # If Covariates are NOT Specified
+		${GCTA} \
+		--grm ${USE_GRM} \
+		--pheno ${NEW_PHENO_PATH%%txt}${perm}.txt \
+		--reml \
+		--reml-maxit 1000 \
+		--reml-est-fix \
+		--reml-pred-rand \
+		--out ${EST_OUT}
+		fi
 
-rm ${NEW_PHENO_PATH%%txt}${perm}.txt
-rm ${NEW_COV_PATH%%txt}${perm}.txt
+		rm ${NEW_PHENO_PATH%%txt}${perm}.txt
+		rm ${NEW_COV_PATH%%txt}${perm}.txt
 
-done # Close Permutation Loop
+	done # Close Permutation Loop
 
 done # Close Phenotype Loop
 
